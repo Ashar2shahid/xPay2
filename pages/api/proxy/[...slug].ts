@@ -337,11 +337,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? { ...endpointBody, ...requestBody }
       : requestBody || endpointBody;
 
-    let finalPath = matchingEndpoint.path;
+    let finalPath = requestPath === matchingEndpoint.path ? '' : requestPath;
     if (matchingEndpoint.params) {
       const endpointParams = JSON.parse(matchingEndpoint.params);
       const queryParams = new URLSearchParams(endpointParams);
-      finalPath += (matchingEndpoint.path.includes('?') ? '&' : '?') + queryParams.toString();
+      finalPath += (finalPath.includes('?') || backendUrl.includes('?') ? '&' : '?') + queryParams.toString();
     }
 
     const forwardResponse = await forwardRequest({

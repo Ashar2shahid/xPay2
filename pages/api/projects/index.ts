@@ -147,6 +147,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           params: endpoint.params ? JSON.stringify(endpoint.params) : null,
           price: endpoint.price || null,
           description: endpoint.description || null,
+          creditsEnabled: endpoint.creditsEnabled ?? true,
+          minTopupAmount: endpoint.minTopupAmount ?? 0,
           isActive: true,
         }));
 
