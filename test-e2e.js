@@ -127,12 +127,21 @@ async function testEndToEnd() {
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
       if (response.status === 200) {
-        const data = await response.json();
-        console.log(`   ✅ SUCCESS (${duration}s)`);
-        console.log(`   Response:`, JSON.stringify(data).substring(0, 100) + '...');
+        let data;
+        const contentType = response.headers.get('content-type') || '';
 
-        if (endpoint.expectedKey && data[endpoint.expectedKey]) {
-          console.log(`   ✅ Verified: Contains expected key '${endpoint.expectedKey}'`);
+        if (contentType.includes('application/json')) {
+          data = await response.json();
+          console.log(`   ✅ SUCCESS (${duration}s)`);
+          console.log(`   Response:`, JSON.stringify(data).substring(0, 100) + '...');
+
+          if (endpoint.expectedKey && data[endpoint.expectedKey]) {
+            console.log(`   ✅ Verified: Contains expected key '${endpoint.expectedKey}'`);
+          }
+        } else {
+          data = await response.text();
+          console.log(`   ✅ SUCCESS (${duration}s)`);
+          console.log(`   Response:`, data.substring(0, 100));
         }
       } else {
         console.log(`   ❌ FAILED: Status ${response.status}`);

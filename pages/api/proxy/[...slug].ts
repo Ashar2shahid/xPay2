@@ -116,8 +116,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log('[Proxy] X-Payment header found, verifying payment...');
-    let x402PaymentRequirements;
-    let decodedPayment;
+    let x402PaymentRequirements: any[];
+    let decodedPayment: any = null;
 
     try {
       x402PaymentRequirements = allowedNetworks.map(network =>

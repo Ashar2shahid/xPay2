@@ -127,6 +127,7 @@ function cleanHeaders(headers: Record<string, string | string[] | undefined>): R
     'connection',
     'transfer-encoding',
     'content-length', // Will be set automatically by fetch
+    'content-encoding', // Will be handled by Next.js
     'x-forwarded-for',
     'x-forwarded-proto',
     'x-forwarded-host'
@@ -156,9 +157,18 @@ export function sendForwardedResponse(
     // Set status code
     res.status(forwardResponse.status);
 
+    // Headers to exclude from client response (to avoid conflicts)
+    const excludeResponseHeaders = new Set([
+      'content-length',
+      'transfer-encoding',
+      'content-encoding'
+    ]);
+
     // Set response headers
     Object.entries(forwardResponse.headers).forEach(([key, value]) => {
-      res.setHeader(key, value);
+      if (!excludeResponseHeaders.has(key.toLowerCase())) {
+        res.setHeader(key, value);
+      }
     });
 
     // Set additional headers (like payment response headers)
