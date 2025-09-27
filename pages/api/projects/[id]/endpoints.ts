@@ -36,7 +36,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from(projectEndpoints)
         .where(eq(projectEndpoints.projectId, id));
 
-      return res.status(200).json({ endpoints });
+      const projectSlug = project[0].slug;
+      const endpointsWithProxyUrl = endpoints.map(endpoint => ({
+        ...endpoint,
+        proxyUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}${endpoint.path}`
+      }));
+
+      return res.status(200).json({ endpoints: endpointsWithProxyUrl });
     }
 
     if (req.method === 'POST') {
@@ -69,7 +75,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const result = await db.insert(projectEndpoints).values(newEndpoint).returning();
 
-      return res.status(201).json({ endpoint: result[0] });
+      const projectSlug = project[0].slug;
+      return res.status(201).json({
+        endpoint: result[0],
+        proxyUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}${result[0].path}`
+      });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

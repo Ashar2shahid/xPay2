@@ -48,8 +48,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               method: e.method,
               price: e.price,
               description: e.description,
-              isActive: e.isActive
-            }))
+              isActive: e.isActive,
+              proxyUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${project.slug}${e.path}`
+            })),
+            proxyUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${project.slug}`
           };
         })
       );
