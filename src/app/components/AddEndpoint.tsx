@@ -55,6 +55,7 @@ export function AddEndpoint({
     price: 0.01,
     creditsEnabled: false,
     minTopupAmount: 10,
+    settleWhen: "before",
   });
 
   // Auto-generate path from URL if path is empty
@@ -117,6 +118,7 @@ export function AddEndpoint({
         price: 0.01,
         creditsEnabled: false,
         minTopupAmount: 10,
+        settleWhen: "before",
       });
 
       // Call success callback
@@ -200,6 +202,120 @@ export function AddEndpoint({
 
           {/* Footer with controls */}
           <div className="flex items-end justify-between pt-2">
+            {/* Settlement Response Time */}
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col items-start">
+                <div className="flex items-center gap-1 mb-1">
+                  <label className="text-[10px] text-muted-foreground">
+                    Settle Response{" "}
+                    <span className="text-primary">
+                      {formData.settleWhen === "before" ? "Before" : "After"}
+                    </span>
+                  </label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label="Settlement timing help"
+                        >
+                          <Info className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Choose whether settlement occurs before or after the
+                        response.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Switch
+                  checked={formData.settleWhen === "after"}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      settleWhen: checked ? "after" : "before",
+                    }))
+                  }
+                  className="scale-75"
+                />
+              </div>
+
+              {/* Use Credit */}
+              <div className="flex flex-col items-start">
+                <div className="flex items-center gap-1 mb-1">
+                  <label className="text-[10px] text-muted-foreground">
+                    Use Credit
+                  </label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label="Use credit help"
+                        >
+                          <Info className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Enable to deduct credits for each API call.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Switch
+                  checked={formData.creditsEnabled}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      creditsEnabled: checked,
+                    }))
+                  }
+                  className="scale-75"
+                />
+              </div>
+
+              {/* Cost per Call */}
+              <div className="flex flex-col items-start min-w-[100px]">
+                <div className="flex items-center gap-1 mb-1">
+                  <label className="text-[10px] text-muted-foreground">
+                    Price
+                  </label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label="Cost per call help"
+                        >
+                          <Info className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Cost in credits deducted per API call.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.01"
+                  value={formData.price}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      price: e.target.value ? parseFloat(e.target.value) : 0.01,
+                    }))
+                  }
+                  className="!text-[10px] !h-6 text-center w-full"
+                />
+              </div>
+            </div>
             {/* Submit button */}
             <div className="flex items-end">
               <Button

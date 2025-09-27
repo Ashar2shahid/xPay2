@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
@@ -13,8 +13,10 @@ import {
   TrendingUp,
   AlertCircle,
   Activity,
+  Copy,
+  Check,
 } from "lucide-react";
-import { EndpointDetails } from "@/app/components/EndpointDetails";
+
 import {
   StatsOverview,
   PerformanceChart,
@@ -33,6 +35,7 @@ export default function EndpointDetail() {
   const { id, endpointId } = useParams() as { id: string; endpointId: string };
   const router = useRouter();
   const { getProject, getEndpoint, loadProject, isLoading, error } = useStore();
+  const [copied, setCopied] = useState(false);
 
   const project = getProject(id);
   const endpoint = project ? getEndpoint(project.id, endpointId) : null;
@@ -107,6 +110,18 @@ export default function EndpointDetail() {
   // Mock hourly data for the last 24 hours
   const hourlyData = generateHourlyData(24);
 
+  const handleCopyProxyUrl = async () => {
+    if (endpoint.proxyUrl) {
+      try {
+        await navigator.clipboard.writeText(endpoint.proxyUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error("Failed to copy proxy URL:", err);
+      }
+    }
+  };
+
   // Mock data for components with actual endpoint data where available
   const metricsData = [
     {
@@ -178,9 +193,7 @@ export default function EndpointDetail() {
             <span>•</span>
             <div className="flex items-center gap-1">
               {project.paymentChains.map((chainId, index) => (
-                <Badge key={chainId} variant="outline" className="text-xs">
-                  {chainId}
-                </Badge>
+                <ChainSymbol key={index} symbol={chainId} />
               ))}
             </div>
             <span>•</span>
@@ -195,13 +208,48 @@ export default function EndpointDetail() {
             </a>
           </div>
         </div>
+
+        {/* Proxy URL Section */}
+
+        <Card className="p-4 bg-muted/50">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Proxy URL
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyProxyUrl}
+                className="h-8 gap-2"
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4" />
+                    Copy
+                  </>
+                )}
+              </Button>
+            </div>
+            <div className="p-3 bg-background rounded-md border">
+              <code className="text-sm font-mono text-foreground break-all">
+                {endpoint.proxyUrl}
+              </code>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Use this URL to make requests through the xPay proxy
+            </p>
+          </div>
+        </Card>
       </div>
 
       {/* Key Metrics */}
       <StatsOverview metrics={metricsData} />
-
-      {/* Endpoint Details Component */}
-      <EndpointDetails endpoint={endpoint} />
 
       {/* Performance Chart */}
       <PerformanceChart data={hourlyData} />

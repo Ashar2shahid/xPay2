@@ -1,5 +1,5 @@
 import React from "react";
-import { SymbolLogo } from "@api3/logos";
+import { SymbolLogo, ChainLogo } from "@api3/logos";
 import { cn } from "@/lib/utils";
 
 export interface ChainSymbolProps {
@@ -22,9 +22,10 @@ export function ChainSymbol({
   className,
   alt,
 }: ChainSymbolProps) {
+  console.log(symbol);
   return (
     <img
-      src={SymbolLogo(symbol)}
+      src={ChainLogo(symbol)}
       alt={alt || symbol}
       className={cn("shrink-0 object-contain", sizeClasses[size], className)}
       onError={(e) => {

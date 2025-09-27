@@ -34,7 +34,7 @@ export { EmptyState } from "./EmptyState";
 export type { EmptyStateProps } from "./EmptyState";
 export { ChainSymbol } from "./ChainSymbol";
 export type { ChainSymbolProps } from "./ChainSymbol";
-
+export { ChainSelectDropdown, PAYMENT_CHAINS } from "./ChainSelectDropdown";
 
 // Existing components
 export { ProjectCard } from "./ProjectCard";
@@ -55,8 +55,3 @@ export {
   ApiErrorMessage,
 } from "./ErrorMessage";
 export type { ErrorMessageProps } from "./ErrorMessage";
-
-// Data Display components
-export { DataField, DataGrid } from "./DataDisplay";
-export { ProjectDetails } from "./ProjectDetails";
-export { EndpointDetails } from "./EndpointDetails";

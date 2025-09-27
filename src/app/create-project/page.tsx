@@ -20,6 +20,7 @@ import {
 import { Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useStore } from "../../store";
+import { ChainSelectDropdown } from "@/app/components/ChainSelectDropdown";
 
 const formSchema = z.object({
   name: z
@@ -34,8 +35,9 @@ const formSchema = z.object({
     .string()
     .min(1, "Wallet address is required")
     .max(200, "Address must be less than 200 characters"),
-  defaultPrice: z.number().min(0, "Price must be 0 or greater").optional(),
-  currency: z.string().optional(),
+  paymentChains: z
+    .array(z.string())
+    .min(1, "At least one payment chain must be selected"),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -51,8 +53,7 @@ export default function CreateProject() {
       name: "",
       description: "",
       payTo: "",
-      defaultPrice: 0,
-      currency: "USD",
+      paymentChains: [],
     },
   });
 
@@ -63,9 +64,7 @@ export default function CreateProject() {
       name: data.name,
       description: data.description,
       payTo: data.payTo,
-      paymentChains: [], // Start with empty payment chains
-      defaultPrice: data.defaultPrice || 0,
-      currency: data.currency || "USD",
+      paymentChains: data.paymentChains,
     };
 
     try {
@@ -169,46 +168,23 @@ export default function CreateProject() {
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="defaultPrice"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Default Price</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                placeholder="0.00"
-                                {...field}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    parseFloat(e.target.value) || 0
-                                  )
-                                }
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="currency"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Currency</FormLabel>
-                            <FormControl>
-                              <Input placeholder="USD" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="paymentChains"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Payment Chains</FormLabel>
+                          <FormControl>
+                            <ChainSelectDropdown
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Select supported payment chains"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
               </div>

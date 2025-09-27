@@ -28,7 +28,7 @@ export interface Endpoint {
   projectId: string;
   url: string;
   path: string;
-  method?: string;
+  method: string;
   price: number | null;
   description: string | null;
   creditsEnabled: boolean;
@@ -36,6 +36,8 @@ export interface Endpoint {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  proxyUrl: string;
+  settleWhen?: "before" | "after"; // Legacy field, not used in API
 }
 
 /**

@@ -1,38 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/app/components/ui/alert-dialog";
 import { useStore } from "@/store";
-import { Endpoint } from "@/types";
-import {
-  Send,
-  ExternalLink,
-  Clock,
-  Zap,
-  TrendingUp,
-  Trash2,
-  AlertCircle,
-} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AddEndpoint } from "@/app/components/AddEndpoint";
-import { ProjectDetails } from "@/app/components/ProjectDetails";
+import { ChainSymbol } from "@/app/components/ChainSymbol";
+
 import {
-  StatsOverview,
   EndpointList,
-  ChainSymbol,
   LoadingSpinner,
   StatsOverviewSkeleton,
   ErrorMessage,
@@ -144,15 +121,7 @@ export default function ProjectDetail() {
             </h1>
             <div className="flex items-center gap-1">
               {project.paymentChains.map((chainId, index) => (
-                <div
-                  key={chainId}
-                  className="p-1 border border-border rounded bg-background"
-                  title={chainId}
-                >
-                  <Badge variant="outline" className="text-xs">
-                    {chainId}
-                  </Badge>
-                </div>
+                <ChainSymbol key={index} symbol={chainId} />
               ))}
             </div>
           </div>
@@ -162,132 +131,24 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      {/* Project Details Component */}
-      <ProjectDetails project={project} />
-
       {/* Add Endpoint Section */}
       <div className="max-w-2xl mx-auto">
         <AddEndpoint projectId={id} onSuccess={handleEndpointAdded} />
       </div>
 
-      {/* Endpoints List with Custom Delete Handling */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg md:text-xl font-semibold text-foreground">
-            Project Endpoints
-          </h2>
-          <div className="text-sm text-muted-foreground">
-            {endpoints.length} endpoint{endpoints.length !== 1 ? "s" : ""}
-          </div>
-        </div>
-
-        {endpoints.length === 0 ? (
-          <div className="flex items-center justify-center p-10 md:p-12 text-center border border-dashed border-border rounded-xl bg-muted/20">
-            <div>
-              <ExternalLink className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                No endpoints yet
-              </h3>
-              <p className="text-muted-foreground">
-                Add your first endpoint using the form above
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {endpoints.map((endpoint) => (
-              <div
-                key={endpoint.id}
-                className="p-6 md:p-7 border border-border rounded-xl cursor-pointer hover:bg-card-hover transition-all hover:shadow-sm group"
-                onClick={() =>
-                  router.push(`/project/${id}/endpoint/${endpoint.id}`)
-                }
-              >
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {endpoint.url}
-                      </h3>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {endpoint.method} {endpoint.path}
-                      </p>
-                      {endpoint.description && (
-                        <p className="text-xs text-muted-foreground">
-                          {endpoint.description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => e.stopPropagation()}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Endpoint</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete this endpoint?
-                              This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteEndpoint(endpoint.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                      <Badge
-                        variant={endpoint.isActive ? "default" : "secondary"}
-                      >
-                        <div className="flex items-center gap-1">
-                          {endpoint.isActive ? (
-                            <TrendingUp className="h-3 w-3" />
-                          ) : (
-                            <Clock className="h-3 w-3" />
-                          )}
-                          {endpoint.isActive ? "Active" : "Inactive"}
-                        </div>
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div className="text-muted-foreground">Price</div>
-                      <div className="font-mono text-foreground">
-                        {endpoint.price ? `$${endpoint.price}` : "Free"}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Credits</div>
-                      <div className="font-mono text-foreground">
-                        {endpoint.creditsEnabled ? "Enabled" : "Disabled"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-muted-foreground border-t border-border pt-4">
-                    Created: {new Date(endpoint.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Endpoints List */}
+      <EndpointList
+        endpoints={endpoints}
+        title="Project Endpoints"
+        onEndpointClick={(endpoint) =>
+          router.push(`/project/${id}/endpoint/${endpoint.id}`)
+        }
+        onEndpointDelete={handleDeleteEndpoint}
+        emptyState={{
+          title: "No endpoints yet",
+          description: "Add your first endpoint using the form above",
+        }}
+      />
     </main>
   );
 }

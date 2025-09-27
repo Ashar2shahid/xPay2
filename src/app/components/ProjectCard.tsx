@@ -5,7 +5,7 @@ import { Card } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
 import { TrendingUp, TrendingDown, Clock, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
-
+import { ChainSymbol } from "./ChainSymbol";
 interface ProjectCardProps {
   project: Project;
 }
@@ -46,40 +46,8 @@ export function ProjectCard({ project }: ProjectCardProps) {
           </div>
           <div className="shrink-0 flex items-center gap-1">
             {project.paymentChains.map((chainId, index) => (
-              <Badge key={chainId} variant="outline" className="text-xs">
-                {chainId}
-              </Badge>
+              <ChainSymbol key={index} symbol={chainId} />
             ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-6 text-sm">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Zap className="h-3 w-3" />
-              <span>Requests</span>
-            </div>
-            <div className="font-mono text-foreground">
-              {totalRequests.toLocaleString()}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <span>Latency</span>
-            </div>
-            <div className="font-mono text-foreground">{avgLatency}ms</div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex items-center gap-1 text-muted-foreground">
-              {getStatusIcon(successRate)}
-              <span>Success</span>
-            </div>
-            <div className={`font-mono text-${getStatusColor(successRate)}`}>
-              {successRate}%
-            </div>
           </div>
         </div>
 
