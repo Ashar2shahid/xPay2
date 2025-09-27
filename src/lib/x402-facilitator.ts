@@ -1,147 +1,174 @@
-// Real x402 facilitator implementation using the x402 package
-import { verify, settle } from 'x402/src/facilitator/facilitator';
-import { Hex } from 'viem';
+// Real x402 implementation based on the reference code
+import { exact } from "x402/schemes";
 import {
+  Network,
   PaymentPayload,
   PaymentRequirements,
-  VerifyResponse,
-  SettleResponse,
-  ExactEvmPayload
-} from 'x402/src/types/verify/x402Specs';
-import { SupportedEVMNetworks, Network } from 'x402/src/types/shared/network';
-import { createConnectedClient, createSigner } from 'x402/src/types/shared/wallet';
+  Price,
+  Resource,
+  settleResponseHeader,
+} from "x402/types";
+import { useFacilitator } from "x402/verify";
+import { processPriceToAtomicAmount, findMatchingPaymentRequirements } from "x402/shared";
 
-// Use x402's built-in client creation functions
+// Environment configuration
+const facilitatorUrl = process.env.FACILITATOR_URL as Resource || 'https://facilitator.coinbase.com' as Resource;
+const payTo = process.env.ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000000' as `0x${string}`;
+
+// Initialize facilitator
+// eslint-disable-next-line react-hooks/rules-of-hooks
+const { verify, settle } = useFacilitator({ url: facilitatorUrl });
+const x402Version = 1;
 
 /**
- * Verify payment using real x402 facilitator
+ * Creates payment requirements for a given price and network
+ * Based on the reference implementation
+ */
+function createExactPaymentRequirements(
+  price: Price,
+  network: Network,
+  resource: Resource,
+  description = "",
+): PaymentRequirements {
+  const atomicAmountForAsset = processPriceToAtomicAmount(price, network);
+  if ("error" in atomicAmountForAsset) {
+    throw new Error(atomicAmountForAsset.error);
+  }
+  const { maxAmountRequired, asset } = atomicAmountForAsset;
+
+  return {
+    scheme: "exact",
+    network,
+    maxAmountRequired,
+    resource,
+    description,
+    mimeType: "",
+    payTo: payTo,
+    maxTimeoutSeconds: 60,
+    asset: asset.address,
+    outputSchema: undefined,
+    extra: {
+      name: 'eip712' in asset ? asset.eip712.name : 'USDC',
+      version: 'eip712' in asset ? asset.eip712.version : '2',
+    },
+  };
+}
+
+/**
+ * Verifies a payment and handles the response
+ * Based on the reference implementation
  */
 export async function verifyX402Payment(
-  paymentPayload: PaymentPayload,
-  paymentRequirements: PaymentRequirements
-): Promise<VerifyResponse> {
+  paymentHeader: string,
+  paymentRequirements: PaymentRequirements[],
+): Promise<{ isValid: boolean; invalidReason?: string; payer?: string; decodedPayment?: PaymentPayload }> {
   try {
-    console.log('[X402 Facilitator] Verifying payment:', {
-      network: paymentRequirements.network,
-      scheme: paymentRequirements.scheme
-    });
+    if (!paymentHeader) {
+      return {
+        isValid: false,
+        invalidReason: "X-PAYMENT header is required"
+      };
+    }
 
-    // Create connected client for verification using x402's function
-    const client = createConnectedClient(paymentRequirements.network);
+    let decodedPayment: PaymentPayload;
+    try {
+      decodedPayment = exact.evm.decodePayment(paymentHeader);
+      decodedPayment.x402Version = x402Version;
+    } catch (error) {
+      return {
+        isValid: false,
+        invalidReason: String(error) || "Invalid or malformed payment header"
+      };
+    }
 
-    // Use real x402 verify function
-    const result = await verify(client as any, paymentPayload, paymentRequirements);
+    try {
+      const selectedPaymentRequirement =
+        findMatchingPaymentRequirements(paymentRequirements, decodedPayment) ||
+        paymentRequirements[0];
+      const response = await verify(decodedPayment, selectedPaymentRequirement);
+      if (!response.isValid) {
+        return {
+          isValid: false,
+          invalidReason: response.invalidReason,
+          payer: response.payer
+        };
+      }
 
-    console.log('[X402 Facilitator] Verification result:', {
-      isValid: result.isValid,
-      invalidReason: result.invalidReason,
-      payer: result.payer
-    });
-
-    return result;
-
+      return {
+        isValid: true,
+        payer: response.payer,
+        decodedPayment: decodedPayment
+      };
+    } catch (error) {
+      return {
+        isValid: false,
+        invalidReason: String(error)
+      };
+    }
   } catch (error) {
     console.error('[X402 Facilitator] Verification error:', error);
     return {
       isValid: false,
-      invalidReason: 'unexpected_verify_error',
-      payer: ''
+      invalidReason: 'unexpected_verify_error'
     };
   }
 }
 
 /**
- * Settle payment using real x402 facilitator
+ * Settles a payment and returns the response header
+ * Based on the reference implementation
  */
 export async function settleX402Payment(
-  paymentPayload: PaymentPayload,
-  paymentRequirements: PaymentRequirements,
-  privateKey: Hex
-): Promise<SettleResponse> {
+  decodedPayment: PaymentPayload,
+  paymentRequirement: PaymentRequirements
+): Promise<{ success: boolean; responseHeader?: string; errorReason?: string }> {
   try {
-    console.log('[X402 Facilitator] Settling payment:', {
-      network: paymentRequirements.network,
-      scheme: paymentRequirements.scheme
-    });
+    const settleResponse = await settle(decodedPayment, paymentRequirement);
+    const responseHeader = settleResponseHeader(settleResponse);
 
-    // Create signer for settlement using x402's function
-    const signer = await createSigner(paymentRequirements.network, privateKey);
-
-    // Use real x402 settle function
-    const result = await settle(signer as any, paymentPayload, paymentRequirements);
-
-    console.log('[X402 Facilitator] Settlement result:', {
-      success: result.success,
-      transaction: result.transaction,
-      errorReason: result.errorReason
-    });
-
-    return result;
-
+    return {
+      success: true,
+      responseHeader: responseHeader
+    };
   } catch (error) {
     console.error('[X402 Facilitator] Settlement error:', error);
     return {
       success: false,
-      errorReason: 'unexpected_settle_error',
-      transaction: '',
-      network: paymentRequirements.network,
-      payer: ''
+      errorReason: String(error)
     };
   }
 }
 
-// Helper to convert our payment headers to x402 PaymentPayload format
-export function convertToX402PaymentPayload(
-  paymentHeaders: {
-    'x-payment': string;
-    'x-payment-signature': string;
-  },
-  network: Network
-): PaymentPayload {
-  try {
-    const paymentData = JSON.parse(paymentHeaders['x-payment']);
-
-    // Create x402 PaymentPayload structure
-    const x402Payload: PaymentPayload = {
-      x402Version: 1,
-      scheme: 'exact',
-      network: network,
-      payload: {
-        signature: paymentHeaders['x-payment-signature'],
-        authorization: {
-          from: paymentData.fromAddress,
-          to: paymentData.toAddress,
-          value: paymentData.amount,
-          validAfter: paymentData.validAfter || '0',
-          validBefore: paymentData.validBefore || String(Math.floor(Date.now() / 1000) + 3600),
-          nonce: paymentData.nonce || `0x${'0'.repeat(64)}`
-        }
-      } as ExactEvmPayload
-    };
-
-    return x402Payload;
-  } catch (error) {
-    throw new Error(`Failed to convert payment payload: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
-
-// Helper to create PaymentRequirements in x402 format
+/**
+ * Helper to create PaymentRequirements for our SaaS use case
+ */
 export function createX402PaymentRequirements(
-  maxAmountRequired: string,
+  price: Price,
   network: Network,
-  payTo: string,
-  resource: string,
+  resource: Resource,
   description?: string
 ): PaymentRequirements {
+  return createExactPaymentRequirements(price, network, resource, description);
+}
+
+/**
+ * Creates a 402 error response with payment requirements
+ */
+export function create402Response(
+  errorMessage: string,
+  paymentRequirements: PaymentRequirements[],
+  payer?: string
+) {
   return {
-    scheme: 'exact',
-    network: network,
-    maxAmountRequired: maxAmountRequired,
-    resource: resource,
-    description: description || `Payment for API access`,
-    mimeType: 'application/json',
-    payTo: payTo,
-    maxTimeoutSeconds: 3600, // 1 hour
-    asset: payTo // Using payTo as asset for simplicity
+    status: 402,
+    body: {
+      x402Version,
+      error: errorMessage,
+      accepts: paymentRequirements,
+      ...(payer && { payer })
+    }
   };
 }
+
+// Export types for convenience
+export type { PaymentPayload, PaymentRequirements, Network, Price, Resource };
