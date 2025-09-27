@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { db, projectEndpoints } from '../../../src/lib/db';
+import { db, projectEndpoints, projects } from '../../../src/lib/db';
 import { eq } from 'drizzle-orm';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -20,7 +20,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'Endpoint not found' });
       }
 
-      return res.status(200).json({ endpoint: endpoint[0] });
+      const project = await db.select()
+        .from(projects)
+        .where(eq(projects.id, endpoint[0].projectId))
+        .limit(1);
+
+      const proxyUrl = project.length > 0
+        ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${project[0].slug}${endpoint[0].path}`
+        : undefined;
+
+      return res.status(200).json({
+        endpoint: endpoint[0],
+        proxyUrl
+      });
     }
 
     if (req.method === 'PATCH') {
@@ -58,7 +70,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'Endpoint not found' });
       }
 
-      return res.status(200).json({ endpoint: updatedEndpoint[0] });
+      const project = await db.select()
+        .from(projects)
+        .where(eq(projects.id, updatedEndpoint[0].projectId))
+        .limit(1);
+
+      const proxyUrl = project.length > 0
+        ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${project[0].slug}${updatedEndpoint[0].path}`
+        : undefined;
+
+      return res.status(200).json({
+        endpoint: updatedEndpoint[0],
+        proxyUrl
+      });
     }
 
     if (req.method === 'DELETE') {
@@ -74,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Endpoint API error:', error);
     return res.status(500).json({
       error: 'Internal server error',

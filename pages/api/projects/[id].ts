@@ -28,12 +28,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from(projectEndpoints)
         .where(eq(projectEndpoints.projectId, id));
 
+      const projectSlug = project[0].slug;
+      const endpointsWithProxyUrl = endpoints.map(endpoint => ({
+        ...endpoint,
+        proxyUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}${endpoint.path}`
+      }));
+
       return res.status(200).json({
         project: {
           ...project[0],
           paymentChains: chains.map(c => c.network),
-          endpoints
-        }
+          endpoints: endpointsWithProxyUrl
+        },
+        proxyUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}`
       });
     }
 
@@ -92,7 +99,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .where(eq(projects.id, id))
         .returning();
 
-      return res.status(200).json({ project: result[0] });
+      return res.status(200).json({
+        project: result[0],
+        proxyUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${result[0].slug}`
+      });
     }
 
     if (req.method === 'DELETE') {
@@ -102,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Project API error:', error);
     return res.status(500).json({
       error: 'Internal server error',
