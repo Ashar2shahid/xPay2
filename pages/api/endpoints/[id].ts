@@ -25,13 +25,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .where(eq(projects.id, endpoint[0].projectId))
         .limit(1);
 
-      const proxyUrl = project.length > 0
-        ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${project[0].slug}${endpoint[0].path}`
-        : undefined;
-
       return res.status(200).json({
-        endpoint: endpoint[0],
-        proxyUrl
+        endpoint: {
+          ...endpoint[0],
+          proxyUrl: project.length > 0
+            ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${project[0].slug}${endpoint[0].path}`
+            : undefined
+        }
       });
     }
 
@@ -75,13 +75,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .where(eq(projects.id, updatedEndpoint[0].projectId))
         .limit(1);
 
-      const proxyUrl = project.length > 0
-        ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${project[0].slug}${updatedEndpoint[0].path}`
-        : undefined;
-
       return res.status(200).json({
-        endpoint: updatedEndpoint[0],
-        proxyUrl
+        endpoint: {
+          ...updatedEndpoint[0],
+          proxyUrl: project.length > 0
+            ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${project[0].slug}${updatedEndpoint[0].path}`
+            : undefined
+        }
       });
     }
 
