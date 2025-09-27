@@ -1,11 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { db, proxiedServices, apiLogs } from '../../../src/lib/db';
-import { eq } from 'drizzle-orm';
-import {
-  extractPaymentFromHeaders,
-  createPaymentChallenge,
-  formatPaymentHeaders
-} from '../../../src/lib/payment';
+import { db, projects, projectEndpoints, projectPaymentChains, apiLogs } from '../../../src/lib/db';
+import { eq, and } from 'drizzle-orm';
 import {
   verifyX402Payment,
   settleX402Payment,
@@ -19,35 +14,80 @@ import {
   validateProxyUrl
 } from '../../../src/lib/proxy-forward';
 
+function findMatchingEndpoint(endpoints: any[], path: string, method: string): any | null {
+  const exactMatch = endpoints.find(e =>
+    e.isActive &&
+    e.path === path &&
+    (e.method === method || e.method === '*')
+  );
+
+  if (exactMatch) return exactMatch;
+
+  for (const endpoint of endpoints) {
+    if (!endpoint.isActive) continue;
+    if (endpoint.method !== '*' && endpoint.method !== method) continue;
+
+    const pattern = endpoint.path.replace(/:[^/]+/g, '[^/]+');
+    const regex = new RegExp(`^${pattern}$`);
+
+    if (regex.test(path)) {
+      return endpoint;
+    }
+  }
+
+  return null;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // 1. Extract proxy slug from URL path
-    const { slug } = req.query; // slug will be an array like ['service-name', 'endpoint', 'path']
+    const { slug } = req.query;
 
     if (!slug || !Array.isArray(slug) || slug.length === 0) {
       return res.status(400).json({ error: 'Invalid proxy path' });
     }
 
-    const proxySlug = slug[0]; // First part is the service identifier
-    const requestPath = '/' + slug.slice(1).join('/'); // Remaining path for the backend
+    const projectSlug = slug[0];
+    const requestPath = '/' + slug.slice(1).join('/');
 
-    // 2. Look up the original backend URL from database
-    const service = await db.select()
-      .from(proxiedServices)
-      .where(eq(proxiedServices.proxySlug, proxySlug))
+    const project = await db.select()
+      .from(projects)
+      .where(eq(projects.slug, projectSlug))
       .limit(1);
 
-    // 3. Validate service exists and is active
-    if (!service.length || !service[0].isActive) {
-      return res.status(404).json({ error: 'Service not found' });
+    if (!project.length || !project[0].isActive) {
+      return res.status(404).json({ error: 'Project not found' });
     }
 
-    // 3.1. Validate the original URL is safe to proxy to
-    if (!validateProxyUrl(service[0].originalUrl)) {
+
+    const endpoints = await db.select()
+      .from(projectEndpoints)
+      .where(eq(projectEndpoints.projectId, project[0].id));
+
+    const paymentChains = await db.select()
+      .from(projectPaymentChains)
+      .where(and(
+        eq(projectPaymentChains.projectId, project[0].id),
+        eq(projectPaymentChains.isActive, true)
+      ));
+
+    const matchingEndpoint = findMatchingEndpoint(endpoints, requestPath, req.method || 'GET');
+
+    if (!matchingEndpoint) {
+      return res.status(404).json({ error: 'Endpoint not found for this path' });
+    }
+
+    if (!validateProxyUrl(matchingEndpoint.url)) {
       return res.status(400).json({ error: 'Invalid backend URL' });
     }
 
-    // 4. Extract and validate payment
+    const price = matchingEndpoint.price ?? project[0].defaultPrice;
+    const backendUrl = matchingEndpoint.url;
+    const allowedNetworks = paymentChains.map(c => c.network);
+
+    if (allowedNetworks.length === 0) {
+      return res.status(500).json({ error: 'No payment networks configured for this project' });
+    }
+
     console.log('[Proxy] Request headers:', Object.keys(req.headers));
     console.log('[Proxy] X-Payment header:', req.headers['x-payment']);
 
@@ -58,38 +98,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!xPaymentHeader) {
       console.log('[Proxy] No X-Payment header found, returning 402');
 
-      // Create x402-compliant response using the real x402 library
-      const x402PaymentRequirements = [createX402PaymentRequirements(
-        `$${service[0].pricePerRequest}`,
-        service[0].network,
-        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${proxySlug}`,
-        `Payment for ${service[0].title} API access`
-      )];
+      const x402Requirements = allowedNetworks.map(network =>
+        createX402PaymentRequirements(
+          `$${price}`,
+          network,
+          `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}`,
+          `Payment for ${project[0].name} - ${matchingEndpoint?.description || requestPath}`
+        )
+      );
 
       const response = create402Response(
         'Payment Required',
-        x402PaymentRequirements
+        x402Requirements
       );
 
       return res.status(response.status).json(response.body);
     }
 
-    // Payment header exists - verify it using real x402 facilitator
     console.log('[Proxy] X-Payment header found, verifying payment...');
     let x402PaymentRequirements;
     let decodedPayment;
 
     try {
-      // Create x402 payment requirements array (note: it expects an array)
-      x402PaymentRequirements = [createX402PaymentRequirements(
-        `$${service[0].pricePerRequest}`, // Convert to price format expected by x402
-        service[0].network,
-        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${proxySlug}`,
-        `Payment for ${service[0].title} API access`
-      )];
+      x402PaymentRequirements = allowedNetworks.map(network =>
+        createX402PaymentRequirements(
+          `$${price}`,
+          network,
+          `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}`,
+          `Payment for ${project[0].name} - ${matchingEndpoint?.description || requestPath}`
+        )
+      );
 
       console.log('[Proxy] Verifying payment with facilitator...');
-      // Verify payment using real x402 facilitator (expects payment header string and requirements array)
       const verification = await verifyX402Payment(
         xPaymentHeader,
         x402PaymentRequirements
@@ -101,7 +141,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         paymentStatus = 'failed';
         paymentError = verification.invalidReason;
 
-        // Use x402 create402Response helper
         const errorResponse = create402Response(
           verification.invalidReason,
           x402PaymentRequirements,
@@ -126,7 +165,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(errorResponse.status).json(errorResponse.body);
     }
 
-    // 5. Settlement phase (steps 8-11 from x402 protocol)
     let settlementStatus = 'pending';
     let settlementTxHash = null;
     let settlementError = null;
@@ -137,10 +175,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         console.log('[Proxy] Starting settlement phase');
 
-        // Call x402 settle function (step 8 in diagram)
+        const usedNetwork = decodedPayment.network;
+        const matchingRequirement = x402PaymentRequirements.find(req => req.network === usedNetwork);
+
+        if (!matchingRequirement) {
+          throw new Error(`No matching payment requirement for network: ${usedNetwork}`);
+        }
+
         const settlementResult = await settleX402Payment(
           decodedPayment,
-          x402PaymentRequirements[0] // settleX402Payment expects single requirement, not array
+          matchingRequirement
         );
 
         if (settlementResult.success) {
@@ -156,19 +200,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         settlementStatus = 'failed';
         settlementError = `Settlement error: ${error.message}`;
         console.error('[Proxy] Settlement error:', error);
-
-        // Settlement failure shouldn't block the request - payment was verified
-        // We'll still proceed to fulfill the request
       }
     } else {
       settlementStatus = 'disabled';
       console.log('[Proxy] Settlement disabled or no private key configured');
     }
 
-    // 6. Log the request with payment and settlement status
     const startTime = Date.now();
     const logEntry = await db.insert(apiLogs).values({
-      serviceId: service[0].id,
+      projectId: project[0].id,
+      endpointId: matchingEndpoint.id,
       requestMethod: req.method,
       requestPath: requestPath,
       requestHeaders: JSON.stringify(req.headers || {}),
@@ -177,26 +218,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userAgent: req.headers['user-agent'] || 'unknown',
       paymentStatus: paymentStatus,
       paymentAmount: decodedPayment?.payload?.authorization?.value ? parseFloat(decodedPayment.payload.authorization.value) / 100 : 0,
-      transactionHash: null, // x402 uses authorization, not direct transaction hash
+      transactionHash: null,
       settlementStatus: settlementStatus,
       settlementTxHash: settlementTxHash,
       settlementError: settlementError
     }).returning({ id: apiLogs.id });
 
-    // 7. Payment verified and settled - proceed to request forwarding (step 7)
-    console.log(`[Proxy] Payment verified and settled, forwarding to backend: ${service[0].originalUrl}${requestPath}`);
+    console.log(`[Proxy] Payment verified and settled, forwarding to backend: ${backendUrl}${matchingEndpoint.path}`);
 
-    // Extract request body
     const requestBody = extractRequestBody(req);
 
-    // Forward request to original backend
     const forwardResponse = await forwardRequest({
-      originalUrl: service[0].originalUrl,
-      requestPath: requestPath,
+      originalUrl: backendUrl,
+      requestPath: matchingEndpoint.path,
       method: req.method,
       headers: req.headers,
       body: requestBody,
-      timeout: 30000 // 30 second timeout
+      timeout: 30000
     });
 
     console.log('[Proxy] Backend API Response:');
@@ -206,12 +244,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('  Body:', JSON.stringify(forwardResponse.body, null, 2));
     console.log('  Headers:', forwardResponse.headers);
 
-    // Update log entry with response details
     const processingTime = Date.now() - startTime;
 
-    // Note: Database update moved to end to avoid blocking response
-
-    // Prepare settlement response headers (step 12 in diagram)
     const settlementHeaders = {};
 
     if (settlementTxHash) {
@@ -222,24 +256,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Add proxy metadata headers
-    settlementHeaders['X-Proxy-Service'] = service[0].title || 'Unknown';
+    settlementHeaders['X-Proxy-Project'] = project[0].name;
     settlementHeaders['X-Proxy-Payment-Status'] = paymentStatus;
     settlementHeaders['X-Proxy-Settlement-Status'] = settlementStatus;
 
-    // Send the forwarded response back to client (step 12)
     sendForwardedResponse(res, forwardResponse, settlementHeaders);
 
     console.log(`[Proxy] Request completed: ${forwardResponse.status} (${processingTime}ms total, ${forwardResponse.duration}ms backend)`);
     console.log(`[Proxy] Payment: ${paymentStatus}, Settlement: ${settlementStatus}`);
 
-    // Update log entry with response details in background (don't await to avoid blocking response)
     db.update(apiLogs)
       .set({
         responseStatus: forwardResponse.status,
         responseHeaders: JSON.stringify(forwardResponse.headers),
         responseBody: typeof forwardResponse.body === 'string'
-          ? forwardResponse.body.substring(0, 10000) // Limit response body size
+          ? forwardResponse.body.substring(0, 10000)
           : JSON.stringify(forwardResponse.body).substring(0, 10000),
         processingTimeMs: processingTime
       })
