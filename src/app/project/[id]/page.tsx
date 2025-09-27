@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Badge } from "@/app/components/ui/badge";
 import { useStore } from "@/store";
@@ -19,6 +19,8 @@ import {
 export default function ProjectDetail() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
+  const [hasMounted, setHasMounted] = useState(false);
+
   const {
     getProject,
     addEndpoint,
@@ -28,15 +30,47 @@ export default function ProjectDetail() {
     error,
   } = useStore();
 
-  const project = getProject(id);
+  const project = hasMounted ? getProject(id) : null;
   const endpoints = project?.endpoints || [];
 
   useEffect(() => {
-    const loadData = async () => {
-      await loadProject(id);
-    };
-    loadData();
-  }, [id, loadProject]);
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (hasMounted) {
+      const loadData = async () => {
+        await loadProject(id);
+      };
+      loadData();
+    }
+  }, [id, loadProject, hasMounted]);
+
+  // Prevent hydration mismatch - show loading until mounted
+  if (!hasMounted) {
+    return (
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 space-y-10">
+        {/* Project Header Skeleton */}
+        <div className="border-b border-border pb-6 md:pb-8">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+              <div className="flex items-center gap-1">
+                <div className="h-6 w-6 bg-muted animate-pulse rounded" />
+              </div>
+            </div>
+            <div className="h-4 w-64 bg-muted animate-pulse rounded" />
+          </div>
+        </div>
+
+        {/* Stats Overview Skeleton */}
+        <StatsOverviewSkeleton />
+
+        {/* Loading message */}
+        <LoadingSpinner text="Loading project details..." className="py-12" />
+      </main>
+    );
+  }
 
   // Handle loading state
   if (isLoading) {

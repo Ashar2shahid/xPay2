@@ -1,6 +1,7 @@
 import React from "react";
 import { SymbolLogo, ChainLogo } from "@api3/logos";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 export interface ChainSymbolProps {
   symbol: string;
@@ -16,21 +17,35 @@ const sizeClasses = {
   lg: "w-6 h-6 max-w-6 max-h-6",
 };
 
+const mapNamesToIds: Record<string, number> = {
+  base: 8453,
+  matic: 137,
+  avax: 43114,
+};
+
 export function ChainSymbol({
   symbol,
   size = "sm",
   className,
   alt,
 }: ChainSymbolProps) {
-  console.log(symbol);
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const id = mapNamesToIds[symbol.toLowerCase()] || symbol;
   return (
-    <img
-      src={ChainLogo(symbol)}
+    <Image
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      src={ChainLogo(id)}
       alt={alt || symbol}
+      width={24}
+      height={24}
       className={cn("shrink-0 object-contain", sizeClasses[size], className)}
-      onError={(e) => {
+      onError={(e: any) => {
         // Hide image if logo doesn't exist
-        (e.target as HTMLImageElement).style.display = "none";
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        //   (e.target as HTMLImageElement).style.display = "none";
       }}
     />
   );

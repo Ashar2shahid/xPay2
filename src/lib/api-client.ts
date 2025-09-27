@@ -34,6 +34,10 @@ export interface CreateProjectInput {
 export interface CreateEndpointInput {
   url: string;
   path: string;
+  method?: HTTPMethod;
+  headers?: Record<string, string>;
+  body?: any;
+  params?: Record<string, any>;
   price?: number;
   description?: string;
   creditsEnabled?: boolean;

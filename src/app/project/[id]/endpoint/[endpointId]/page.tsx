@@ -31,21 +31,135 @@ import {
   NotFoundErrorMessage,
 } from "@/app/components";
 
+// Component to display endpoint configuration (headers, body, params)
+function EndpointConfiguration({ endpoint }: { endpoint: any }) {
+  const parseJsonField = (field: string | null | undefined) => {
+    if (!field) return null;
+    try {
+      return JSON.parse(field);
+    } catch {
+      return field; // Return as string if parsing fails
+    }
+  };
+
+  const formatJson = (obj: any) => {
+    if (obj === null || obj === undefined) return null;
+    return JSON.stringify(obj, null, 2);
+  };
+
+  const headers = parseJsonField(endpoint.headers);
+  const body = parseJsonField(endpoint.body);
+  const params = parseJsonField(endpoint.params);
+
+  const hasAnyConfig = headers || body || params;
+
+  if (!hasAnyConfig) {
+    return (
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-2">Configuration</h3>
+        <p className="text-muted-foreground text-sm">
+          No headers, parameters, or body configuration set for this endpoint.
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-6">
+      <h3 className="text-lg font-semibold mb-4">Configuration</h3>
+      <div className="space-y-4">
+        {headers && (
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">
+              Headers
+            </h4>
+            <div className="bg-muted/50 rounded-md p-3 border">
+              <pre className="text-xs font-mono text-foreground overflow-x-auto">
+                {formatJson(headers)}
+              </pre>
+            </div>
+          </div>
+        )}
+
+        {params && (
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">
+              Parameters
+            </h4>
+            <div className="bg-muted/50 rounded-md p-3 border">
+              <pre className="text-xs font-mono text-foreground overflow-x-auto">
+                {formatJson(params)}
+              </pre>
+            </div>
+          </div>
+        )}
+
+        {body && (
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">
+              Request Body
+            </h4>
+            <div className="bg-muted/50 rounded-md p-3 border">
+              <pre className="text-xs font-mono text-foreground overflow-x-auto">
+                {formatJson(body)}
+              </pre>
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export default function EndpointDetail() {
   const { id, endpointId } = useParams() as { id: string; endpointId: string };
   const router = useRouter();
   const { getProject, getEndpoint, loadProject, isLoading, error } = useStore();
   const [copied, setCopied] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
 
-  const project = getProject(id);
+  const project = hasMounted ? getProject(id) : null;
   const endpoint = project ? getEndpoint(project.id, endpointId) : null;
 
   useEffect(() => {
-    const loadData = async () => {
-      await loadProject(id);
-    };
-    loadData();
-  }, [id, loadProject]);
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (hasMounted) {
+      const loadData = async () => {
+        await loadProject(id);
+      };
+      loadData();
+    }
+  }, [id, loadProject, hasMounted]);
+
+  // Prevent hydration mismatch - show loading until mounted
+  if (!hasMounted) {
+    return (
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 space-y-10">
+        {/* Endpoint Header Skeleton */}
+        <div className="border-b border-border pb-6 md:pb-8">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+              <div className="h-6 w-16 bg-muted animate-pulse rounded" />
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+              <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Overview Skeleton */}
+        <StatsOverviewSkeleton />
+
+        {/* Loading message */}
+        <LoadingSpinner text="Loading endpoint details..." className="py-12" />
+      </main>
+    );
+  }
 
   // Handle loading state
   if (isLoading) {
@@ -250,6 +364,9 @@ export default function EndpointDetail() {
 
       {/* Key Metrics */}
       <StatsOverview metrics={metricsData} />
+
+      {/* Endpoint Configuration */}
+      <EndpointConfiguration endpoint={endpoint} />
 
       {/* Performance Chart */}
       <PerformanceChart data={hourlyData} />

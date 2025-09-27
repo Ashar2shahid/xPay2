@@ -49,6 +49,8 @@ layer(base);
     display: grid;
     grid-auto-rows: auto 1fr auto; /* main fills up available space + push the footer down */
     min-height: 100vh; /* be at least a full viewport height */
+
+    font-family: monospace !important;
   }
 
   body {

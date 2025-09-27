@@ -63,15 +63,21 @@ export function EndpointList({
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {endpoints.map((endpoint) => (
-            <EndpointCard
-              key={endpoint.id}
-              endpoint={endpoint}
-              onClick={() => onEndpointClick?.(endpoint)}
-              onDelete={onEndpointDelete}
-              showActions={showActions}
-            />
-          ))}
+          {endpoints
+            .sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime()
+            )
+            .map((endpoint) => (
+              <EndpointCard
+                key={endpoint.id}
+                endpoint={endpoint}
+                onClick={() => onEndpointClick?.(endpoint)}
+                onDelete={onEndpointDelete}
+                showActions={showActions}
+              />
+            ))}
         </div>
       )}
     </div>

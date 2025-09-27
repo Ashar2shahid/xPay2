@@ -52,6 +52,10 @@ export function AddEndpoint({
     url: "",
     path: "",
     description: "",
+    method: "GET" as HTTPMethod,
+    headers: "",
+    params: "",
+    body: "",
     price: 0.01,
     creditsEnabled: false,
     minTopupAmount: 10,
@@ -95,10 +99,63 @@ export function AddEndpoint({
     setIsSubmitting(true);
 
     try {
+      // Parse headers and params as JSON objects
+      let parsedHeaders: Record<string, string> | undefined;
+      let parsedParams: Record<string, any> | undefined;
+      let parsedBody: any;
+
+      try {
+        parsedHeaders =
+          formData.headers && formData.headers.trim()
+            ? JSON.parse(formData.headers.trim())
+            : undefined;
+      } catch {
+        toast({
+          title: "Invalid Headers",
+          description: "Headers must be valid JSON object",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      try {
+        parsedParams =
+          formData.params && formData.params.trim()
+            ? JSON.parse(formData.params.trim())
+            : undefined;
+      } catch {
+        toast({
+          title: "Invalid Params",
+          description: "Params must be valid JSON object",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      try {
+        parsedBody =
+          formData.body && formData.body.trim()
+            ? JSON.parse(formData.body.trim())
+            : undefined;
+      } catch {
+        toast({
+          title: "Invalid Body",
+          description: "Body must be valid JSON",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       await addEndpoint(projectId, {
         url: formData.url,
         path: formData.path || formData.url,
-
+        method: formData.method,
+        headers: parsedHeaders,
+        params: parsedParams,
+        body: parsedBody,
         description: formData.description || undefined,
         price: formData.price > 0 ? formData.price : undefined,
         creditsEnabled: formData.creditsEnabled,
@@ -115,6 +172,10 @@ export function AddEndpoint({
         url: "",
         path: "",
         description: "",
+        method: "GET" as HTTPMethod,
+        headers: "",
+        params: "",
+        body: "",
         price: 0.01,
         creditsEnabled: false,
         minTopupAmount: 10,
@@ -168,7 +229,7 @@ export function AddEndpoint({
             </div>
           </div>
 
-          {/* URL field */}
+          {/* Method and URL field */}
           <div className="relative">
             <div className="flex items-center gap-2 absolute -top-1 left-2 bg-background px-1">
               <TooltipProvider>
@@ -188,17 +249,145 @@ export function AddEndpoint({
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <Input
-              type="url"
-              placeholder="https://api.example.com/v1"
-              required
-              value={formData.url}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, url: e.target.value }))
-              }
-              className="!text-lg !p-4 !h-14"
-            />
+            <div className="flex items-center gap-2">
+              <Select
+                value={formData.method}
+                onValueChange={(value: HTTPMethod) =>
+                  setFormData((prev) => ({ ...prev, method: value }))
+                }
+              >
+                <SelectTrigger className="w-24 !h-14">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                type="url"
+                placeholder="https://api.example.com/v1"
+                required
+                value={formData.url}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, url: e.target.value }))
+                }
+                className="!text-lg !p-4 !h-14 flex-1"
+              />
+            </div>
           </div>
+
+          {/* Conditional fields based on method */}
+          {(formData.method === "GET" || formData.method === "POST") && (
+            <div className="space-y-3">
+              {/* Headers field */}
+              <div className="relative">
+                <div className="flex items-center gap-2 absolute -top-1 left-2 bg-background px-1">
+                  <label className="text-xs text-muted-foreground">
+                    Headers (JSON)
+                  </label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label="Headers help"
+                        >
+                          <Info className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        HTTP headers as JSON object, e.g.,{" "}
+                        {`{"Authorization": "Bearer token"}`}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Input
+                  placeholder='{"Content-Type": "application/json"}'
+                  value={formData.headers}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      headers: e.target.value,
+                    }))
+                  }
+                  className="!text-sm !p-3 !h-10"
+                />
+              </div>
+
+              {/* Params field */}
+              <div className="relative">
+                <div className="flex items-center gap-2 absolute -top-1 left-2 bg-background px-1">
+                  <label className="text-xs text-muted-foreground">
+                    Params (JSON)
+                  </label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label="Params help"
+                        >
+                          <Info className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Query parameters as JSON object, e.g.,{" "}
+                        {`{"limit": 10, "page": 1}`}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Input
+                  placeholder='{"limit": 10, "page": 1}'
+                  value={formData.params}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, params: e.target.value }))
+                  }
+                  className="!text-sm !p-3 !h-10"
+                />
+              </div>
+
+              {/* Body field - only for POST */}
+              {formData.method === "POST" && (
+                <div className="relative">
+                  <div className="flex items-center gap-2 absolute -top-1 left-2 bg-background px-1">
+                    <label className="text-xs text-muted-foreground">
+                      Body (JSON)
+                    </label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label="Body help"
+                          >
+                            <Info className="h-3 w-3" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Request body as JSON, e.g.,{" "}
+                          {`{"name": "John", "email": "john@example.com"}`}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <Input
+                    placeholder='{"name": "John", "email": "john@example.com"}'
+                    value={formData.body}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, body: e.target.value }))
+                    }
+                    className="!text-sm !p-3 !h-10"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Footer with controls */}
           <div className="flex items-end justify-between pt-2">

@@ -29,6 +29,10 @@ export interface Endpoint {
   url: string;
   path: string;
   method: string;
+  headers?: string | null;
+  body?: string | null;
+  params?: string | null;
+
   price: number | null;
   description: string | null;
   creditsEnabled: boolean;

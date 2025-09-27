@@ -89,6 +89,16 @@ export function EndpointCard({
     return url.substring(0, maxLength) + "...";
   };
 
+  const extractDomain = (url: string) => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname;
+    } catch (error) {
+      // Fallback for invalid URLs - return the original string
+      return url;
+    }
+  };
+
   return (
     <Card
       className={`p-6 cursor-pointer hover:bg-card-hover transition-colors group ${className}`}
@@ -98,7 +108,7 @@ export function EndpointCard({
         <div className="flex items-start justify-between">
           <div className="space-y-1 flex-1 min-w-0">
             <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-              {endpoint.url}
+              {extractDomain(endpoint.url)}
             </h3>
             {endpoint.description && (
               <p className="text-xs text-muted-foreground">

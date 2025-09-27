@@ -13,10 +13,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={` antialiased`}>
         <div className="min-h-screen bg-background">
-          {/* <DynamicHeader /> */}
+          <DynamicHeader />
           {children}
         </div>
       </body>
