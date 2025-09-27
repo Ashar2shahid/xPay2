@@ -7,6 +7,13 @@ import { Card, CardContent } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Switch } from "@/app/components/ui/switch";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
@@ -16,6 +23,7 @@ import { Info, Plus, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
 import { toast } from "@/hooks/use-toast";
+import { HTTPMethod } from "@/types";
 
 export interface AddEndpointProps {
   projectId: string;
@@ -23,10 +31,10 @@ export interface AddEndpointProps {
   className?: string;
 }
 
-const deriveHostname = (value?: string): string => {
-  if (!value) return "";
+const derivePathFromUrl = (url?: string): string => {
+  if (!url) return "";
   try {
-    return new URL(value).hostname;
+    return new URL(url).pathname;
   } catch {
     return "";
   }
@@ -38,27 +46,28 @@ export function AddEndpoint({
   className,
 }: AddEndpointProps) {
   const addEndpoint = useStore((state) => state.addEndpoint);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: "",
     url: "",
+    path: "",
     description: "",
-    settleWhen: "before" as "before" | "after",
-    useCredit: false,
-    costPerCall: 0.01,
+    price: 0.01,
+    creditsEnabled: false,
+    minTopupAmount: 10,
   });
 
-  // Auto-generate name from URL hostname if name is empty
+  // Auto-generate path from URL if path is empty
   React.useEffect(() => {
     if (!formData.url) return;
-    if (formData.name && formData.name.trim().length > 0) return;
-    const host = deriveHostname(formData.url);
-    if (host) {
-      setFormData((prev) => ({ ...prev, name: host }));
+    if (formData.path && formData.path.trim().length > 0) return;
+    const path = derivePathFromUrl(formData.url);
+    if (path) {
+      setFormData((prev) => ({ ...prev, path }));
     }
-  }, [formData.url, formData.name]);
+  }, [formData.url, formData.path]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Basic validation
@@ -82,41 +91,46 @@ export function AddEndpoint({
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      addEndpoint(projectId, {
-        name: formData.name || undefined,
+      await addEndpoint(projectId, {
         url: formData.url,
+        path: formData.path || formData.url,
+
         description: formData.description || undefined,
-        settleWhen: formData.settleWhen,
-        useCredit: formData.useCredit,
-        costPerCall: formData.costPerCall,
+        price: formData.price > 0 ? formData.price : undefined,
+        creditsEnabled: formData.creditsEnabled,
+        minTopupAmount: formData.minTopupAmount,
       });
 
       toast({
         title: "Endpoint Added",
-        description: `Successfully added ${
-          formData.name || deriveHostname(formData.url)
-        }`,
+        description: `Successfully added ${formData.url}`,
       });
 
       // Reset form
       setFormData({
-        name: "",
         url: "",
+        path: "",
         description: "",
-        settleWhen: "before",
-        useCredit: false,
-        costPerCall: 0.01,
+        price: 0.01,
+        creditsEnabled: false,
+        minTopupAmount: 10,
       });
 
       // Call success callback
       onSuccess?.();
     } catch (error) {
+      console.error("Failed to add endpoint:", error);
       toast({
         title: "Error",
-        description: "Failed to add endpoint",
+        description:
+          error instanceof Error ? error.message : "Failed to add endpoint",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -124,14 +138,14 @@ export function AddEndpoint({
     <Card className={className}>
       <CardContent className="p-3">
         <form onSubmit={handleSubmit} className="space-y-3">
-          {/* Header row with name and description */}
+          {/* Header row with path and description */}
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
               <Input
-                placeholder="Name"
-                value={formData.name}
+                placeholder="Path (e.g., /api/v1/users)"
+                value={formData.path}
                 onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  setFormData((prev) => ({ ...prev, path: e.target.value }))
                 }
                 className="!text-[10px] bg-transparent border-0 !h-4 outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0"
               />
@@ -186,120 +200,6 @@ export function AddEndpoint({
 
           {/* Footer with controls */}
           <div className="flex items-end justify-between pt-2">
-            {/* Settlement Response Time */}
-            <div className="flex items-center gap-4">
-              <div className="flex flex-col items-start">
-                <div className="flex items-center gap-1 mb-1">
-                  <label className="text-[10px] text-muted-foreground">
-                    Settle Response{" "}
-                    <span className="text-primary">
-                      {formData.settleWhen === "before" ? "Before" : "After"}
-                    </span>
-                  </label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:text-foreground"
-                          aria-label="Settlement timing help"
-                        >
-                          <Info className="h-3 w-3" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Choose whether settlement occurs before or after the
-                        response.
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <Switch
-                  checked={formData.settleWhen === "after"}
-                  onCheckedChange={(checked) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      settleWhen: checked ? "after" : "before",
-                    }))
-                  }
-                  className="scale-75"
-                />
-              </div>
-
-              {/* Use Credit */}
-              <div className="flex flex-col items-start">
-                <div className="flex items-center gap-1 mb-1">
-                  <label className="text-[10px] text-muted-foreground">
-                    Use Credit
-                  </label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:text-foreground"
-                          aria-label="Use credit help"
-                        >
-                          <Info className="h-3 w-3" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Enable to deduct credits for each API call.
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <Switch
-                  checked={formData.useCredit}
-                  onCheckedChange={(checked) =>
-                    setFormData((prev) => ({ ...prev, useCredit: checked }))
-                  }
-                  className="scale-75"
-                />
-              </div>
-
-              {/* Cost per Call */}
-              <div className="flex flex-col items-start min-w-[100px]">
-                <div className="flex items-center gap-1 mb-1">
-                  <label className="text-[10px] text-muted-foreground">
-                    Cost per Call
-                  </label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:text-foreground"
-                          aria-label="Cost per call help"
-                        >
-                          <Info className="h-3 w-3" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Cost in credits deducted per API call.
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.01"
-                  value={formData.costPerCall}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      costPerCall: e.target.value
-                        ? parseFloat(e.target.value)
-                        : 0.01,
-                    }))
-                  }
-                  className="!text-[10px] !h-6 text-center w-full"
-                />
-              </div>
-            </div>
-
             {/* Submit button */}
             <div className="flex items-end">
               <Button
@@ -307,8 +207,13 @@ export function AddEndpoint({
                 variant="outline"
                 size="sm"
                 className="text-xs"
+                disabled={isSubmitting}
               >
-                <ArrowRight className="h-3 w-3" />
+                {isSubmitting ? (
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <ArrowRight className="h-3 w-3" />
+                )}
               </Button>
             </div>
           </div>

@@ -5,12 +5,11 @@ import { Card } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Endpoint } from "@/types";
-import { TrendingUp, AlertCircle, Clock, Edit, Trash2 } from "lucide-react";
+import { TrendingUp, AlertCircle, Clock, Trash2 } from "lucide-react";
 
 export interface EndpointCardProps {
   endpoint: Endpoint;
   onClick?: () => void;
-  onEdit?: (endpoint: Endpoint) => void;
   onDelete?: (endpointId: string) => void;
   showActions?: boolean;
   className?: string;
@@ -19,43 +18,30 @@ export interface EndpointCardProps {
 export function EndpointCard({
   endpoint,
   onClick,
-  onEdit,
   onDelete,
   showActions = true,
   className = "",
 }: EndpointCardProps) {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "success";
-      case "error":
-        return "destructive";
-      default:
-        return "secondary";
-    }
+  // Using filler data for stats since API doesn't provide these yet
+  const requestCount = 0;
+  const avgLatency = 0;
+  const successRate = 0;
+
+  const getStatusColor = () => {
+    return endpoint.isActive ? "default" : "secondary";
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "active":
-        return <TrendingUp className="h-3 w-3" />;
-      case "error":
-        return <AlertCircle className="h-3 w-3" />;
-      default:
-        return <Clock className="h-3 w-3" />;
-    }
+  const getStatusIcon = () => {
+    return endpoint.isActive ? (
+      <TrendingUp className="h-3 w-3" />
+    ) : (
+      <Clock className="h-3 w-3" />
+    );
   };
 
   const handleCardClick = () => {
     if (onClick) {
       onClick();
-    }
-  };
-
-  const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onEdit) {
-      onEdit(endpoint);
     }
   };
 
@@ -75,10 +61,10 @@ export function EndpointCard({
         <div className="flex items-start justify-between">
           <div className="space-y-1 flex-1 min-w-0">
             <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-              {endpoint.name}
+              {endpoint.url}
             </h3>
             <p className="text-sm text-muted-foreground truncate">
-              {endpoint.url}
+              {endpoint.method} {endpoint.path}
             </p>
             {endpoint.description && (
               <p className="text-xs text-muted-foreground">
@@ -88,17 +74,6 @@ export function EndpointCard({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {showActions && onEdit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleEdit}
-                className="h-8 w-8 p-0"
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-            )}
-
             {showActions && onDelete && (
               <Button
                 variant="ghost"
@@ -110,10 +85,10 @@ export function EndpointCard({
               </Button>
             )}
 
-            <Badge variant={getStatusColor(endpoint.status)}>
+            <Badge variant={getStatusColor()}>
               <div className="flex items-center gap-1">
-                {getStatusIcon(endpoint.status)}
-                {endpoint.status}
+                {getStatusIcon()}
+                {endpoint.isActive ? "Active" : "Inactive"}
               </div>
             </Badge>
           </div>
@@ -123,28 +98,21 @@ export function EndpointCard({
           <div>
             <div className="text-muted-foreground">Requests</div>
             <div className="font-mono text-foreground">
-              {endpoint.requestCount.toLocaleString()}
+              {requestCount.toLocaleString()}
             </div>
           </div>
           <div>
             <div className="text-muted-foreground">Latency</div>
-            <div className="font-mono text-foreground">
-              {endpoint.avgLatency}ms
-            </div>
+            <div className="font-mono text-foreground">{avgLatency}ms</div>
           </div>
           <div>
             <div className="text-muted-foreground">Success</div>
-            <div
-              className={`font-mono text-${getStatusColor(endpoint.status)}`}
-            >
-              {endpoint.successRate}%
-            </div>
+            <div className="font-mono text-foreground">{successRate}%</div>
           </div>
         </div>
 
         <div className="text-xs text-muted-foreground border-t border-border pt-3">
-          Last request: {new Date(endpoint.lastRequest).toLocaleDateString()} at{" "}
-          {new Date(endpoint.lastRequest).toLocaleTimeString()}
+          Created: {new Date(endpoint.createdAt).toLocaleDateString()}
         </div>
       </div>
     </Card>

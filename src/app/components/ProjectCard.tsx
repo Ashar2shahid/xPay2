@@ -5,7 +5,6 @@ import { Card } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
 import { TrendingUp, TrendingDown, Clock, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { ChainSymbol } from "./ChainSymbol";
 
 interface ProjectCardProps {
   project: Project;
@@ -13,6 +12,11 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project }: ProjectCardProps) {
   const router = useRouter();
+
+  // Using filler data for stats since API doesn't provide these yet
+  const totalRequests = 0;
+  const avgLatency = 0;
+  const successRate = 0;
 
   const getStatusColor = (successRate: number) => {
     if (successRate >= 99) return "success";
@@ -37,18 +41,14 @@ export function ProjectCard({ project }: ProjectCardProps) {
               {project.name}
             </h3>
             <p className="text-sm text-muted-foreground line-clamp-2">
-              {project.description}
+              {project.description || "No description provided"}
             </p>
           </div>
           <div className="shrink-0 flex items-center gap-1">
-            {project.chain.map((chain, index) => (
-              <div
-                key={chain.id}
-                className="p-1.5 border border-border rounded-md bg-background"
-                title={chain.name}
-              >
-                <ChainSymbol symbol={chain.symbol} size="sm" />
-              </div>
+            {project.paymentChains.map((chainId, index) => (
+              <Badge key={chainId} variant="outline" className="text-xs">
+                {chainId}
+              </Badge>
             ))}
           </div>
         </div>
@@ -60,7 +60,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
               <span>Requests</span>
             </div>
             <div className="font-mono text-foreground">
-              {project.totalRequests.toLocaleString()}
+              {totalRequests.toLocaleString()}
             </div>
           </div>
 
@@ -69,22 +69,16 @@ export function ProjectCard({ project }: ProjectCardProps) {
               <Clock className="h-3 w-3" />
               <span>Latency</span>
             </div>
-            <div className="font-mono text-foreground">
-              {project.avgLatency}ms
-            </div>
+            <div className="font-mono text-foreground">{avgLatency}ms</div>
           </div>
 
           <div className="space-y-1">
             <div className="flex items-center gap-1 text-muted-foreground">
-              {getStatusIcon(project.successRate)}
+              {getStatusIcon(successRate)}
               <span>Success</span>
             </div>
-            <div
-              className={`font-mono text-${getStatusColor(
-                project.successRate
-              )}`}
-            >
-              {project.successRate}%
+            <div className={`font-mono text-${getStatusColor(successRate)}`}>
+              {successRate}%
             </div>
           </div>
         </div>

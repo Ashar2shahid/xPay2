@@ -10,7 +10,6 @@ export interface EndpointListProps {
   endpoints: Endpoint[];
   title?: string;
   onEndpointClick?: (endpoint: Endpoint) => void;
-  onEndpointEdit?: (endpoint: Endpoint) => void;
   onEndpointDelete?: (endpointId: string) => void;
   onCreateEndpoint?: () => void;
   showActions?: boolean;
@@ -26,7 +25,6 @@ export function EndpointList({
   endpoints,
   title = "Project Endpoints",
   onEndpointClick,
-  onEndpointEdit,
   onEndpointDelete,
   onCreateEndpoint,
   showActions = true,
@@ -70,7 +68,6 @@ export function EndpointList({
               key={endpoint.id}
               endpoint={endpoint}
               onClick={() => onEndpointClick?.(endpoint)}
-              onEdit={onEndpointEdit}
               onDelete={onEndpointDelete}
               showActions={showActions}
             />

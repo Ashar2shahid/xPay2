@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
@@ -13,6 +14,7 @@ import {
   AlertCircle,
   Activity,
 } from "lucide-react";
+import { EndpointDetails } from "@/app/components/EndpointDetails";
 import {
   StatsOverview,
   PerformanceChart,
@@ -21,90 +23,130 @@ import {
   generateHourlyData,
   generateMockErrors,
   generateMockConfig,
+  LoadingSpinner,
+  StatsOverviewSkeleton,
+  ErrorMessage,
+  NotFoundErrorMessage,
 } from "@/app/components";
 
 export default function EndpointDetail() {
   const { id, endpointId } = useParams() as { id: string; endpointId: string };
   const router = useRouter();
-  const { getProject, getEndpoint } = useStore();
+  const { getProject, getEndpoint, loadProject, isLoading, error } = useStore();
 
   const project = getProject(id);
   const endpoint = project ? getEndpoint(project.id, endpointId) : null;
 
-  if (!endpoint || !project) {
+  useEffect(() => {
+    const loadData = async () => {
+      await loadProject(id);
+    };
+    loadData();
+  }, [id, loadProject]);
+
+  // Handle loading state
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-10 md:p-12">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold text-foreground mb-2">
-            Endpoint not found
-          </h1>
-          <Button onClick={() => router.push("/")} variant="outline">
-            Back to Home
-          </Button>
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 space-y-10">
+        {/* Endpoint Header Skeleton */}
+        <div className="border-b border-border pb-6 md:pb-8">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+              <div className="h-6 w-16 bg-muted animate-pulse rounded" />
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+              <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+            </div>
+          </div>
         </div>
-      </div>
+
+        {/* Stats Overview Skeleton */}
+        <StatsOverviewSkeleton />
+
+        {/* Loading message */}
+        <LoadingSpinner text="Loading endpoint details..." className="py-12" />
+      </main>
     );
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "default";
-      case "error":
-        return "destructive";
-      default:
-        return "secondary";
-    }
-  };
+  // Handle error state
+  if (error) {
+    return (
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+        <ErrorMessage
+          error={error}
+          title="Failed to load endpoint"
+          showRetry={true}
+          onRetry={() => loadProject(id)}
+          retryText="Reload Endpoint"
+          className="max-w-2xl mx-auto mt-20"
+        />
+      </main>
+    );
+  }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "active":
-        return <div className="h-2 w-2 bg-green-500 rounded-full mr-1" />;
-      case "error":
-        return <div className="h-2 w-2 bg-red-500 rounded-full mr-1" />;
-      default:
-        return <div className="h-2 w-2 bg-gray-500 rounded-full mr-1" />;
-    }
-  };
+  // Handle endpoint not found (after loading is complete)
+  if (!isLoading && (!project || !endpoint)) {
+    return (
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+        <NotFoundErrorMessage
+          itemName="endpoint"
+          onGoBack={() => router.push(`/project/${id}`)}
+        />
+      </main>
+    );
+  }
+
+  // If we're still loading or don't have data yet, don't render the main content
+  if (!project || !endpoint) {
+    return null;
+  }
 
   // Mock hourly data for the last 24 hours
   const hourlyData = generateHourlyData(24);
 
-  // Mock data for components
+  // Mock data for components with actual endpoint data where available
   const metricsData = [
     {
-      title: "Total Requests",
-      value: endpoint.requestCount,
+      title: "Endpoint URL",
+      value: endpoint.url,
       icon: Zap,
       iconColor: "text-primary",
       iconBgColor: "bg-primary/10",
-      subtitle: "+1,247 from yesterday",
+      subtitle: `${endpoint.method} request`,
     },
     {
-      title: "Avg Latency",
-      value: `${endpoint.avgLatency}ms`,
+      title: "Price",
+      value: endpoint.price ? `$${endpoint.price}` : "Free",
       icon: Clock,
       iconColor: "text-secondary",
       iconBgColor: "bg-secondary/10",
-      subtitle: "-12ms from yesterday",
+      subtitle: endpoint.creditsEnabled
+        ? "Credits enabled"
+        : "Credits disabled",
     },
     {
-      title: "Success Rate",
-      value: `${endpoint.successRate}%`,
+      title: "Status",
+      value: endpoint.isActive ? "Active" : "Inactive",
       icon: TrendingUp,
-      iconColor: "text-success",
-      iconBgColor: "bg-success/10",
-      valueClassName: "text-success",
-      subtitle: "+0.3% from yesterday",
+      iconColor: endpoint.isActive ? "text-success" : "text-muted-foreground",
+      iconBgColor: endpoint.isActive ? "bg-success/10" : "bg-muted/10",
+      valueClassName: endpoint.isActive
+        ? "text-success"
+        : "text-muted-foreground",
+      subtitle: endpoint.isActive
+        ? "Endpoint is active"
+        : "Endpoint is inactive",
     },
     {
-      title: "Uptime",
-      value: "99.9%",
+      title: "Min Topup",
+      value: `$${endpoint.minTopupAmount}`,
       icon: Activity,
       iconColor: "text-accent",
       iconBgColor: "bg-accent/10",
-      subtitle: "30-day average",
+      subtitle: "Minimum topup amount",
     },
   ];
 
@@ -118,12 +160,16 @@ export default function EndpointDetail() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-              {endpoint.name}
+              {endpoint.url}
             </h1>
-            <Badge variant={getStatusColor(endpoint.status)}>
+            <Badge variant={endpoint.isActive ? "default" : "secondary"}>
               <div className="flex items-center gap-1">
-                {getStatusIcon(endpoint.status)}
-                {endpoint.status}
+                <div
+                  className={`h-2 w-2 rounded-full mr-1 ${
+                    endpoint.isActive ? "bg-green-500" : "bg-gray-500"
+                  }`}
+                />
+                {endpoint.isActive ? "Active" : "Inactive"}
               </div>
             </Badge>
           </div>
@@ -131,14 +177,10 @@ export default function EndpointDetail() {
             <span>{project.name}</span>
             <span>•</span>
             <div className="flex items-center gap-1">
-              {project.chain.map((chain, index) => (
-                <div
-                  key={chain.id}
-                  className="p-0.5 border border-border rounded bg-background"
-                  title={chain.name}
-                >
-                  <ChainSymbol symbol={chain.symbol} size="xs" />
-                </div>
+              {project.paymentChains.map((chainId, index) => (
+                <Badge key={chainId} variant="outline" className="text-xs">
+                  {chainId}
+                </Badge>
               ))}
             </div>
             <span>•</span>
@@ -148,7 +190,7 @@ export default function EndpointDetail() {
               rel="noopener noreferrer"
               className="flex items-center gap-1 hover:text-foreground transition-colors"
             >
-              {endpoint.url}
+              {endpoint.method} {endpoint.path}
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>
@@ -158,6 +200,9 @@ export default function EndpointDetail() {
       {/* Key Metrics */}
       <StatsOverview metrics={metricsData} />
 
+      {/* Endpoint Details Component */}
+      <EndpointDetails endpoint={endpoint} />
+
       {/* Performance Chart */}
       <PerformanceChart data={hourlyData} />
 
@@ -166,7 +211,7 @@ export default function EndpointDetail() {
         recentErrors={recentErrors}
         configuration={configData}
         createdAt={new Date(endpoint.createdAt)}
-        lastRequest={new Date(endpoint.lastRequest)}
+        lastRequest={new Date()} // Using current date as fallback since lastRequest doesn't exist in new schema
       />
     </main>
   );

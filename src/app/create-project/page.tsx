@@ -10,13 +10,6 @@ import { Card } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
 import { Textarea } from "@/app/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/app/components/ui/select";
-import {
   Form,
   FormControl,
   FormField,
@@ -24,11 +17,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/app/components/ui/form";
-import { mockChains } from "@/data/mockData";
 import { Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useStore } from "../../store";
-import { ChainSymbol } from "@/app/components";
 
 const formSchema = z.object({
   name: z
@@ -39,7 +30,12 @@ const formSchema = z.object({
     .string()
     .min(1, "Description is required")
     .max(500, "Description must be less than 500 characters"),
-  chainIds: z.array(z.string()).min(1, "Please select at least one chain"),
+  payTo: z
+    .string()
+    .min(1, "Wallet address is required")
+    .max(200, "Address must be less than 200 characters"),
+  defaultPrice: z.number().min(0, "Price must be 0 or greater").optional(),
+  currency: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -54,48 +50,45 @@ export default function CreateProject() {
     defaultValues: {
       name: "",
       description: "",
-      chainIds: [],
+      payTo: "",
+      defaultPrice: 0,
+      currency: "USD",
     },
   });
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
 
-    const chains = mockChains.filter((c) => data.chainIds.includes(c.id));
-    if (chains.length === 0) {
-      toast({
-        title: "Error",
-        description: "Selected chains not found.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
     const newProject = {
       name: data.name,
       description: data.description,
-      chain: chains,
-      endpoints: [],
-      totalRequests: 0,
-      avgLatency: 0,
-      successRate: 0,
+      payTo: data.payTo,
+      paymentChains: [], // Start with empty payment chains
+      defaultPrice: data.defaultPrice || 0,
+      currency: data.currency || "USD",
     };
 
-    const newId = addProject(newProject);
+    try {
+      const newId = await addProject(newProject);
 
-    toast({
-      title: "Project created successfully",
-      description: `${data.name} has been created.`,
-    });
+      toast({
+        title: "Project created successfully",
+        description: `${data.name} has been created.`,
+      });
 
-    setIsSubmitting(false);
-    router.push(`/project/${newId}`);
+      setIsSubmitting(false);
+      router.push(`/project/${await newId}`);
+    } catch (error) {
+      console.error("Failed to create project:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to create project",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+    }
   };
-
-  const selectedChains = mockChains.filter((chain) =>
-    form.watch("chainIds").includes(chain.id)
-  );
 
   return (
     <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
@@ -161,149 +154,61 @@ export default function CreateProject() {
 
                     <FormField
                       control={form.control}
-                      name="chainIds"
+                      name="payTo"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Blockchain Networks</FormLabel>
-                          <div className="space-y-3">
-                            <div className="relative">
-                              <Select>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue>
-                                      {field.value.length === 0 ? (
-                                        "Select blockchain networks"
-                                      ) : (
-                                        <div className="flex items-center gap-1">
-                                          <span>
-                                            {field.value.length} network
-                                            {field.value.length !== 1
-                                              ? "s"
-                                              : ""}{" "}
-                                            selected
-                                          </span>
-                                          <div className="flex items-center gap-1 ml-2">
-                                            {field.value
-                                              .slice(0, 3)
-                                              .map((chainId) => {
-                                                const chain = mockChains.find(
-                                                  (c) => c.id === chainId
-                                                );
-                                                return chain ? (
-                                                  <ChainSymbol
-                                                    key={chainId}
-                                                    symbol={chain.symbol}
-                                                    size="xs"
-                                                  />
-                                                ) : null;
-                                              })}
-                                            {field.value.length > 3 && (
-                                              <span className="text-xs text-muted-foreground">
-                                                +{field.value.length - 3}
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </SelectValue>
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {selectedChains.length > 0 && (
-                                    <div className="sticky top-0 z-10 bg-popover/80 backdrop-blur supports-[backdrop-filter]:bg-popover/60 border-b border-border px-2 py-2">
-                                      <div className="flex items-center gap-1 overflow-x-auto">
-                                        {selectedChains.map((chain) => (
-                                          <div
-                                            key={chain.id}
-                                            className="p-1 border border-border rounded bg-background"
-                                            title={chain.name}
-                                          >
-                                            <ChainSymbol
-                                              symbol={chain.symbol}
-                                              size="xs"
-                                            />
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {mockChains.map((chain) => (
-                                    <SelectItem
-                                      key={chain.id}
-                                      value={chain.id}
-                                      onSelect={() => {
-                                        const currentValue = field.value || [];
-                                        if (currentValue.includes(chain.id)) {
-                                          field.onChange(
-                                            currentValue.filter(
-                                              (id) => id !== chain.id
-                                            )
-                                          );
-                                        } else {
-                                          field.onChange([
-                                            ...currentValue,
-                                            chain.id,
-                                          ]);
-                                        }
-                                      }}
-                                    >
-                                      <div className="flex items-center gap-2 w-full">
-                                        <input
-                                          type="checkbox"
-                                          checked={field.value.includes(
-                                            chain.id
-                                          )}
-                                          onChange={() => {}} // Handled by onSelect
-                                          className="rounded border-border"
-                                        />
-                                        <ChainSymbol
-                                          symbol={chain.symbol}
-                                          size="sm"
-                                        />
-                                        <span>{chain.name}</span>
-                                        <span className="text-xs text-muted-foreground ml-auto">
-                                          {chain.symbol}
-                                        </span>
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              Select one or more blockchain networks for your
-                              project
-                            </div>
-                          </div>
+                          <FormLabel>Payment Address</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="0x1234...abcd or wallet.eth"
+                              {...field}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    {selectedChains.length > 0 && (
-                      <div className="p-4 bg-muted text-sm space-y-3 rounded-md">
-                        <div className="font-medium text-foreground">
-                          Selected Networks ({selectedChains.length})
-                        </div>
-                        <div className="space-y-2">
-                          {selectedChains.map((chain) => (
-                            <div
-                              key={chain.id}
-                              className="flex items-center gap-2"
-                            >
-                              <ChainSymbol symbol={chain.symbol} size="sm" />
-                              <div className="flex-1">
-                                <div className="font-medium">{chain.name}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  Chain ID: {chain.chainId} •{" "}
-                                  {chain.explorerUrl}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="defaultPrice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Default Price</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                placeholder="0.00"
+                                {...field}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="currency"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Currency</FormLabel>
+                            <FormControl>
+                              <Input placeholder="USD" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

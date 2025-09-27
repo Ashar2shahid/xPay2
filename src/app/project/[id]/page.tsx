@@ -24,35 +24,98 @@ import {
   Zap,
   TrendingUp,
   Trash2,
-  Edit,
   AlertCircle,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AddEndpoint } from "@/app/components/AddEndpoint";
+import { ProjectDetails } from "@/app/components/ProjectDetails";
 import {
   StatsOverview,
   EndpointList,
-  EditEndpointDialog,
   ChainSymbol,
+  LoadingSpinner,
+  StatsOverviewSkeleton,
+  ErrorMessage,
+  NotFoundErrorMessage,
 } from "@/app/components";
 
 export default function ProjectDetail() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
-  const { getProject, addEndpoint, updateEndpoint, deleteEndpoint } =
-    useStore();
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null);
+  const {
+    getProject,
+    addEndpoint,
+    deleteEndpoint,
+    loadProject,
+    isLoading,
+    error,
+  } = useStore();
 
   const project = getProject(id);
   const endpoints = project?.endpoints || [];
 
   useEffect(() => {
-    if (!project) {
-      router.push("/not-found");
-    }
-  }, [project, router]);
+    const loadData = async () => {
+      await loadProject(id);
+    };
+    loadData();
+  }, [id, loadProject]);
 
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 space-y-10">
+        {/* Project Header Skeleton */}
+        <div className="border-b border-border pb-6 md:pb-8">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+              <div className="flex items-center gap-1">
+                <div className="h-6 w-6 bg-muted animate-pulse rounded" />
+              </div>
+            </div>
+            <div className="h-4 w-64 bg-muted animate-pulse rounded" />
+          </div>
+        </div>
+
+        {/* Stats Overview Skeleton */}
+        <StatsOverviewSkeleton />
+
+        {/* Loading message */}
+        <LoadingSpinner text="Loading project details..." className="py-12" />
+      </main>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+        <ErrorMessage
+          error={error}
+          title="Failed to load project"
+          showRetry={true}
+          onRetry={() => loadProject(id)}
+          retryText="Reload Project"
+          className="max-w-2xl mx-auto mt-20"
+        />
+      </main>
+    );
+  }
+
+  // Handle project not found (after loading is complete)
+  if (!isLoading && !project) {
+    return (
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+        <NotFoundErrorMessage
+          itemName="project"
+          onGoBack={() => router.push("/")}
+        />
+      </main>
+    );
+  }
+
+  // If we're still loading or don't have a project yet, don't render the main content
   if (!project) {
     return null;
   }
@@ -62,21 +125,6 @@ export default function ProjectDetail() {
     // The component will re-render when the store updates
   };
 
-  const handleEditEndpoint = (
-    endpointId: string,
-    updates: { name: string; url: string; description?: string }
-  ) => {
-    updateEndpoint(id, endpointId, updates);
-
-    toast({
-      title: "Endpoint Updated",
-      description: `Endpoint ${updates.name} has been updated.`,
-    });
-
-    setIsEditDialogOpen(false);
-    setEditingEndpoint(null);
-  };
-
   const handleDeleteEndpoint = (endpointId: string) => {
     deleteEndpoint(id, endpointId);
     toast({
@@ -84,40 +132,6 @@ export default function ProjectDetail() {
       description: "The endpoint has been removed.",
     });
   };
-
-  const openEditDialog = (endpoint: Endpoint) => {
-    setEditingEndpoint(endpoint);
-    setIsEditDialogOpen(true);
-  };
-
-  // Prepare metrics data for StatsOverview
-  const metrics = [
-    {
-      title: "Total Requests",
-      value: project.totalRequests,
-      icon: Zap,
-      iconColor: "text-muted-foreground",
-    },
-    {
-      title: "Avg Latency",
-      value: `${project.avgLatency}ms`,
-      icon: Clock,
-      iconColor: "text-muted-foreground",
-    },
-    {
-      title: "Success Rate",
-      value: `${project.successRate}%`,
-      icon: TrendingUp,
-      iconColor: "text-muted-foreground",
-      valueClassName: "text-success",
-    },
-    {
-      title: "Active Endpoints",
-      value: endpoints.filter((ep) => ep.status === "active").length,
-      icon: ExternalLink,
-      iconColor: "text-muted-foreground",
-    },
-  ];
 
   return (
     <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 space-y-10">
@@ -129,40 +143,31 @@ export default function ProjectDetail() {
               {project.name}
             </h1>
             <div className="flex items-center gap-1">
-              {project.chain.map((chain, index) => (
+              {project.paymentChains.map((chainId, index) => (
                 <div
-                  key={chain.id}
+                  key={chainId}
                   className="p-1 border border-border rounded bg-background"
-                  title={chain.name}
+                  title={chainId}
                 >
-                  <ChainSymbol symbol={chain.symbol} size="xs" />
+                  <Badge variant="outline" className="text-xs">
+                    {chainId}
+                  </Badge>
                 </div>
               ))}
             </div>
           </div>
           <p className="text-sm md:text-base text-muted-foreground">
-            {project.description}
+            {project.description || "No description provided"}
           </p>
         </div>
       </div>
 
-      {/* Stats Overview */}
-      <StatsOverview metrics={metrics} columns={{ default: 4, md: 4, lg: 4 }} />
+      {/* Project Details Component */}
+      <ProjectDetails project={project} />
 
       {/* Add Endpoint Section */}
       <div className="max-w-2xl mx-auto">
         <AddEndpoint projectId={id} onSuccess={handleEndpointAdded} />
-
-        {/* Edit Endpoint Dialog */}
-        <EditEndpointDialog
-          endpoint={editingEndpoint}
-          isOpen={isEditDialogOpen}
-          onClose={() => {
-            setIsEditDialogOpen(false);
-            setEditingEndpoint(null);
-          }}
-          onSave={handleEditEndpoint}
-        />
       </div>
 
       {/* Endpoints List with Custom Delete Handling */}
@@ -202,10 +207,10 @@ export default function ProjectDetail() {
                   <div className="flex items-start justify-between">
                     <div className="space-y-1 flex-1 min-w-0">
                       <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {endpoint.name}
+                        {endpoint.url}
                       </h3>
                       <p className="text-sm text-muted-foreground truncate">
-                        {endpoint.url}
+                        {endpoint.method} {endpoint.path}
                       </p>
                       {endpoint.description && (
                         <p className="text-xs text-muted-foreground">
@@ -214,17 +219,6 @@ export default function ProjectDetail() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditDialog(endpoint);
-                        }}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
@@ -240,9 +234,8 @@ export default function ProjectDetail() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete Endpoint</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete &quot;
-                              {endpoint.name}&quot;? This action cannot be
-                              undone.
+                              Are you sure you want to delete this endpoint?
+                              This action cannot be undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -257,55 +250,37 @@ export default function ProjectDetail() {
                         </AlertDialogContent>
                       </AlertDialog>
                       <Badge
-                        variant={
-                          endpoint.status === "active"
-                            ? "default"
-                            : endpoint.status === "error"
-                            ? "destructive"
-                            : "secondary"
-                        }
+                        variant={endpoint.isActive ? "default" : "secondary"}
                       >
                         <div className="flex items-center gap-1">
-                          {endpoint.status === "active" && (
+                          {endpoint.isActive ? (
                             <TrendingUp className="h-3 w-3" />
-                          )}
-                          {endpoint.status === "error" && (
-                            <AlertCircle className="h-3 w-3" />
-                          )}
-                          {endpoint.status === "inactive" && (
+                          ) : (
                             <Clock className="h-3 w-3" />
                           )}
-                          {endpoint.status}
+                          {endpoint.isActive ? "Active" : "Inactive"}
                         </div>
                       </Badge>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <div className="text-muted-foreground">Requests</div>
+                      <div className="text-muted-foreground">Price</div>
                       <div className="font-mono text-foreground">
-                        {endpoint.requestCount.toLocaleString()}
+                        {endpoint.price ? `$${endpoint.price}` : "Free"}
                       </div>
                     </div>
                     <div>
-                      <div className="text-muted-foreground">Latency</div>
+                      <div className="text-muted-foreground">Credits</div>
                       <div className="font-mono text-foreground">
-                        {endpoint.avgLatency}ms
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Success</div>
-                      <div className="font-mono text-foreground">
-                        {endpoint.successRate}%
+                        {endpoint.creditsEnabled ? "Enabled" : "Disabled"}
                       </div>
                     </div>
                   </div>
 
                   <div className="text-xs text-muted-foreground border-t border-border pt-4">
-                    Last request:{" "}
-                    {new Date(endpoint.lastRequest).toLocaleDateString()} at{" "}
-                    {new Date(endpoint.lastRequest).toLocaleTimeString()}
+                    Created: {new Date(endpoint.createdAt).toLocaleDateString()}
                   </div>
                 </div>
               </div>

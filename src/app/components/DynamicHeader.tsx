@@ -12,6 +12,7 @@ export function DynamicHeader() {
 
   // Helper function to determine route type
   const getRouteType = () => {
+    if (!pathname) return "unknown";
     if (pathname === "/") return "home";
     if (pathname === "/create-project") return "create-project";
     if (pathname.match(/^\/project\/[^/]+$/)) return "project-detail";
