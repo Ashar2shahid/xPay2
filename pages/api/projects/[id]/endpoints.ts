@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === 'POST') {
-      const { url, path = '', method = '*', price, description } = req.body;
+      const { url, path = '', method = '*', headers, body, params, price, description } = req.body;
 
       if (!url) {
         return res.status(400).json({ error: 'url is required' });
@@ -68,6 +68,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         url,
         path,
         method,
+        headers: headers ? JSON.stringify(headers) : null,
+        body: body ? JSON.stringify(body) : null,
+        params: params ? JSON.stringify(params) : null,
         price: price || null,
         description: description || null,
         isActive: true,

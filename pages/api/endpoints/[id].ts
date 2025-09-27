@@ -40,6 +40,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         url,
         path,
         method,
+        headers,
+        body,
+        params,
         price,
         description,
         creditsEnabled,
@@ -55,6 +58,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (url !== undefined) updateData.url = url;
       if (path !== undefined) updateData.path = path;
       if (method !== undefined) updateData.method = method;
+      if (headers !== undefined) updateData.headers = headers ? JSON.stringify(headers) : null;
+      if (body !== undefined) updateData.body = body ? JSON.stringify(body) : null;
+      if (params !== undefined) updateData.params = params ? JSON.stringify(params) : null;
       if (price !== undefined) updateData.price = price;
       if (description !== undefined) updateData.description = description;
       if (creditsEnabled !== undefined) updateData.creditsEnabled = creditsEnabled;
