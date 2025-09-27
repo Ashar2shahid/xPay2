@@ -1,3 +1,4 @@
+import { NextApiRequest, NextApiResponse } from 'next';
 import { db, proxiedServices, apiLogs } from '../../../src/lib/db';
 import { eq } from 'drizzle-orm';
 import {
@@ -8,8 +9,8 @@ import {
 import {
   verifyX402Payment,
   settleX402Payment,
-  convertToX402PaymentPayload,
-  createX402PaymentRequirements
+  createX402PaymentRequirements,
+  create402Response
 } from '../../../src/lib/x402-facilitator';
 import {
   forwardRequest,
@@ -18,7 +19,7 @@ import {
   validateProxyUrl
 } from '../../../src/lib/proxy-forward';
 
-export default async function handler(req, res) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     // 1. Extract proxy slug from URL path
     const { slug } = req.query; // slug will be an array like ['service-name', 'endpoint', 'path']
@@ -47,93 +48,82 @@ export default async function handler(req, res) {
     }
 
     // 4. Extract and validate payment
-    const paymentPayload = extractPaymentFromHeaders(req.headers);
-    const paymentRequirements = {
-      amount: service[0].pricePerRequest.toString(),
-      currency: service[0].currency,
-      network: service[0].network,
-      payTo: service[0].payTo,
-      description: `Payment for ${service[0].title} API access`
-    };
+    console.log('[Proxy] Request headers:', Object.keys(req.headers));
+    console.log('[Proxy] X-Payment header:', req.headers['x-payment']);
 
+    const xPaymentHeader = req.headers['x-payment'] as string;
     let paymentStatus = 'pending';
     let paymentError = null;
 
-    if (!paymentPayload) {
-      // No payment provided - return HTTP 402 Payment Required
-      const challenge = createPaymentChallenge(paymentRequirements);
-      const headers = formatPaymentHeaders(challenge);
+    if (!xPaymentHeader) {
+      console.log('[Proxy] No X-Payment header found, returning 402');
 
-      // Set headers before sending response
-      Object.entries(headers).forEach(([key, value]) => {
-        res.setHeader(key, value);
-      });
-
-      return res.status(402).json({
-        error: 'Payment Required',
-        message: 'This API requires payment to access',
-        paymentRequired: paymentRequirements,
-        challenge: challenge
-      });
-    }
-
-    // Convert to x402 format and verify payment using real x402 facilitator
-    let x402PaymentPayload;
-    let x402PaymentRequirements;
-
-    try {
-      x402PaymentPayload = convertToX402PaymentPayload({
-        'x-payment': req.headers['x-payment'],
-        'x-payment-signature': req.headers['x-payment-signature']
-      }, service[0].network);
-
-      x402PaymentRequirements = createX402PaymentRequirements(
-        service[0].pricePerRequest.toString(),
+      // Create x402-compliant response using the real x402 library
+      const x402PaymentRequirements = [createX402PaymentRequirements(
+        `$${service[0].pricePerRequest}`,
         service[0].network,
-        service[0].payTo,
         `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${proxySlug}`,
         `Payment for ${service[0].title} API access`
+      )];
+
+      const response = create402Response(
+        'Payment Required',
+        x402PaymentRequirements
       );
 
-      const verification = await verifyX402Payment(x402PaymentPayload, x402PaymentRequirements);
+      return res.status(response.status).json(response.body);
+    }
+
+    // Payment header exists - verify it using real x402 facilitator
+    console.log('[Proxy] X-Payment header found, verifying payment...');
+    let x402PaymentRequirements;
+    let decodedPayment;
+
+    try {
+      // Create x402 payment requirements array (note: it expects an array)
+      x402PaymentRequirements = [createX402PaymentRequirements(
+        `$${service[0].pricePerRequest}`, // Convert to price format expected by x402
+        service[0].network,
+        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${proxySlug}`,
+        `Payment for ${service[0].title} API access`
+      )];
+
+      console.log('[Proxy] Verifying payment with facilitator...');
+      // Verify payment using real x402 facilitator (expects payment header string and requirements array)
+      const verification = await verifyX402Payment(
+        xPaymentHeader,
+        x402PaymentRequirements
+      );
+
+      console.log('[Proxy] Verification result:', verification);
+
       if (!verification.isValid) {
         paymentStatus = 'failed';
         paymentError = verification.invalidReason;
 
-        const challenge = createPaymentChallenge(paymentRequirements);
-        const headers = formatPaymentHeaders(challenge);
+        // Use x402 create402Response helper
+        const errorResponse = create402Response(
+          verification.invalidReason,
+          x402PaymentRequirements,
+          verification.payer
+        );
 
-        Object.entries(headers).forEach(([key, value]) => {
-          res.setHeader(key, value);
-        });
-
-        return res.status(402).json({
-          error: 'Payment Invalid',
-          message: verification.invalidReason,
-          paymentRequired: paymentRequirements,
-          challenge: challenge
-        });
+        return res.status(errorResponse.status).json(errorResponse.body);
       }
 
       paymentStatus = 'verified';
+      decodedPayment = verification.decodedPayment;
     } catch (conversionError) {
       console.error('[Proxy] Payment conversion error:', conversionError);
       paymentStatus = 'failed';
       paymentError = `Payment format error: ${conversionError.message}`;
 
-      const challenge = createPaymentChallenge(paymentRequirements);
-      const headers = formatPaymentHeaders(challenge);
+      const errorResponse = create402Response(
+        conversionError.message,
+        x402PaymentRequirements || []
+      );
 
-      Object.entries(headers).forEach(([key, value]) => {
-        res.setHeader(key, value);
-      });
-
-      return res.status(402).json({
-        error: 'Payment Format Error',
-        message: conversionError.message,
-        paymentRequired: paymentRequirements,
-        challenge: challenge
-      });
+      return res.status(errorResponse.status).json(errorResponse.body);
     }
 
     // 5. Settlement phase (steps 8-11 from x402 protocol)
@@ -149,14 +139,13 @@ export default async function handler(req, res) {
 
         // Call x402 settle function (step 8 in diagram)
         const settlementResult = await settleX402Payment(
-          x402PaymentPayload,
-          x402PaymentRequirements,
-          process.env.EVM_PRIVATE_KEY
+          decodedPayment,
+          x402PaymentRequirements[0] // settleX402Payment expects single requirement, not array
         );
 
         if (settlementResult.success) {
           settlementStatus = 'settled';
-          settlementTxHash = settlementResult.transaction;
+          settlementTxHash = settlementResult.responseHeader;
           console.log(`[Proxy] Settlement successful: ${settlementTxHash}`);
         } else {
           settlementStatus = 'failed';
@@ -182,13 +171,13 @@ export default async function handler(req, res) {
       serviceId: service[0].id,
       requestMethod: req.method,
       requestPath: requestPath,
-      requestHeaders: JSON.stringify(req.headers),
+      requestHeaders: JSON.stringify(req.headers || {}),
       requestBody: req.body ? JSON.stringify(req.body) : null,
       clientIp: req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown',
       userAgent: req.headers['user-agent'] || 'unknown',
       paymentStatus: paymentStatus,
-      paymentAmount: parseFloat(paymentPayload.amount),
-      transactionHash: paymentPayload.transactionHash,
+      paymentAmount: decodedPayment?.payload?.authorization?.value ? parseFloat(decodedPayment.payload.authorization.value) / 100 : 0,
+      transactionHash: null, // x402 uses authorization, not direct transaction hash
       settlementStatus: settlementStatus,
       settlementTxHash: settlementTxHash,
       settlementError: settlementError
@@ -209,6 +198,13 @@ export default async function handler(req, res) {
       body: requestBody,
       timeout: 30000 // 30 second timeout
     });
+
+    console.log('[Proxy] Backend API Response:');
+    console.log('  Status:', forwardResponse.status);
+    console.log('  Success:', forwardResponse.success);
+    console.log('  Duration:', forwardResponse.duration, 'ms');
+    console.log('  Body:', JSON.stringify(forwardResponse.body, null, 2));
+    console.log('  Headers:', forwardResponse.headers);
 
     // Update log entry with response details
     const processingTime = Date.now() - startTime;

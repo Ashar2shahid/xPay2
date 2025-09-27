@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "init-db": "tsx scripts/init-db.ts"
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
@@ -16,9 +17,12 @@
     "drizzle-orm": "^0.29.0",
     "ethers": "^6.9.0",
     "next": "^15.0.0",
+    "node-fetch": "^3.3.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "x402": "^0.6.5"
+    "viem": "^2.37.8",
+    "x402": "^0.6.5",
+    "x402-fetch": "^0.6.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.8",
@@ -28,6 +32,7 @@
     "drizzle-kit": "^0.20.0",
     "eslint": "^8.0.0",
     "eslint-config-next": "14.0.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.0.0"
   }
 }

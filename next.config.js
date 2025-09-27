@@ -1,16 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: false
-  },
-  async rewrites() {
-    return [
-      {
-        source: '/api/proxy/:path*',
-        destination: '/api/proxy'
-      }
-    ]
-  }
+  // Remove experimental appDir and rewrites that interfere with dynamic routes
 }
 
 module.exports = nextConfig
