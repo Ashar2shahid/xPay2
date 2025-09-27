@@ -77,8 +77,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const projectSlug = project[0].slug;
       return res.status(201).json({
-        endpoint: result[0],
-        proxyUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}${result[0].path}`
+        endpoint: {
+          ...result[0],
+          proxyUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}${result[0].path}`
+        }
       });
     }
 
