@@ -169,8 +169,8 @@
 
   /* typography */
   /* Font families */
-  --font-display: 'Whyte Inktrap Variable', system-ui, sans-serif;
-  --font-body: 'Poppins', system-ui, sans-serif;
+  --font-display: 'Tektur', monospace;
+  --font-body: 'Tektur', monospace;
   --font-mono: var(--font-geist-mono), monospace;
   --font-display: var(--font-mono);
   --font-body: var(--font-mono)
