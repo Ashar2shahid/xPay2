@@ -1,0 +1,161 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap")
+layer(base);
+
+/* P reset */
+@import "./reset.css" layer(base);
+
+/* S etup */
+@import "./setup.css" layer(base);
+
+@import "./theme.css" layer(theme);
+
+@import "./typography.css" layer(utilities);
+
+@import "tailwindcss";
+
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark, [data-mode="dark"], .dark *, [data-mode="dark"] *));
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border, currentColor);
+    @apply border-border outline-ring/50;
+  }
+
+  /* // */
+
+  body #root {
+    display: grid;
+    grid-auto-rows: auto 1fr auto; /* main fills up available space + push the footer down */
+    min-height: 100vh; /* be at least a full viewport height */
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  #root {
+    position: relative;
+  }
+}
+
+/* then other contextual styles */
+
+@layer components {
+  /*  */
+
+  /* scrollbar */
+  * {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: var(--line-width, 4px); /* Firefox */
+  }
+  /* This part is for the scrollbar track / */
+  *::-webkit-scrollbar {
+    width: var(--line-width, 4px);
+    height: var(--line-width, 4px);
+  }
+
+  /* / This part is for the track (the part that the thumb slides across) / */
+  ::-webkit-scrollbar-track {
+    box-shadow: var(--shadow-xs);
+    border-radius: var(--radius-lg);
+  }
+
+  /* / This part is for the thumb (the part you drag) / */
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+      to bottom,
+      var(--color-primary),
+      var(--color-secondary)
+    );
+    border-radius: var(--radius-lg);
+  }
+
+  /* / This part is for the thumb when it's being hovered over  */
+  ::-webkit-scrollbar-thumb:hover {
+    filter: brightness(1.2);
+  }
+
+  .tabs-list {
+    @apply flex items-center p-1 relative;
+
+    /* &::before {
+        content: '';
+        position: absolute;
+        height: 2px;
+        bottom: 0;
+        left: var(--tab-left, 0);
+        width: var(--tab-width, 30px);
+        background: var(--color-primary);
+        transition: left var(--transition-normal), width var(--transition-normal);
+      }*/
+  }
+}
+
+@layer utilities {
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.7s both;
+  }
+  .animate-fade-in-slow {
+    animation: fadeIn 1.5s both;
+  }
+  @keyframes bounceSlow {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+  .animate-bounce-slow {
+    animation: bounceSlow 2s infinite;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+}
+
+.halftone {
+  background-color: var(--color-base-900);
+  background-image: radial-gradient(
+    circle at center,
+    var(--color-base-700) 10%,
+    transparent 0
+  );
+  background-size: 1rem 1rem;
+  background-repeat: round;
+}
