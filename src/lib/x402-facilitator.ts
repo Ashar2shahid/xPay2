@@ -9,7 +9,7 @@ import {
   settleResponseHeader,
 } from "x402/types";
 import { useFacilitator } from "x402/verify";
-import { processPriceToAtomicAmount, findMatchingPaymentRequirements } from "x402/shared";
+import { processPriceToAtomicAmount, findMatchingPaymentRequirements, getDefaultAsset } from "x402/shared";
 
 // Environment configuration
 const facilitatorUrl = process.env.FACILITATOR_URL as Resource || 'https://facilitator.coinbase.com' as Resource;
@@ -168,6 +168,15 @@ export function create402Response(
       ...(payer && { payer })
     }
   };
+}
+
+/**
+ * Converts atomic amount (micro-USDC) to dollar amount using x402 library's asset info
+ */
+export function atomicAmountToDollars(atomicAmount: string, network: Network): number {
+  const asset = getDefaultAsset(network);
+  const decimals = asset.decimals;
+  return parseFloat(atomicAmount) / Math.pow(10, decimals);
 }
 
 // Export types for convenience

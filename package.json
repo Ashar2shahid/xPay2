@@ -8,11 +8,13 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "init-db": "tsx scripts/init-db.ts"
+    "init-db": "tsx scripts/init-db.ts",
+    "migrate-schema": "tsx scripts/migrate-schema.ts"
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
     "better-sqlite3": "^9.2.2",
+    "bignumber.js": "^9.3.1",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.29.0",
     "ethers": "^6.9.0",

@@ -1,11 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { db, projects, projectEndpoints, projectPaymentChains, apiLogs } from '../../../src/lib/db';
 import { eq, and } from 'drizzle-orm';
+import BigNumber from 'bignumber.js';
 import {
   verifyX402Payment,
   settleX402Payment,
   createX402PaymentRequirements,
-  create402Response
+  create402Response,
+  atomicAmountToDollars
 } from '../../../src/lib/x402-facilitator';
 import {
   forwardRequest,
@@ -13,6 +15,13 @@ import {
   extractRequestBody,
   validateProxyUrl
 } from '../../../src/lib/proxy-forward';
+import {
+  getCreditBalance,
+  addCredits,
+  deductCredits,
+  calculateOverpayment,
+  verifyZeroValueAuthSignature
+} from '../../../src/lib/credits';
 
 function findMatchingEndpoint(endpoints: any[], path: string, method: string): any | null {
   const exactMatch = endpoints.find(e =>
@@ -118,40 +127,128 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('[Proxy] X-Payment header found, verifying payment...');
     let x402PaymentRequirements: any[];
     let decodedPayment: any = null;
+    let creditBalance: any = null;
+    let usedCredits = false;
 
     try {
-      x402PaymentRequirements = allowedNetworks.map(network =>
-        createX402PaymentRequirements(
-          `$${price}`,
-          network,
-          `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}`,
-          `Payment for ${project[0].name} - ${matchingEndpoint?.description || requestPath}`
-        )
-      );
-
-      console.log('[Proxy] Verifying payment with facilitator...');
-      const verification = await verifyX402Payment(
-        xPaymentHeader,
-        x402PaymentRequirements
-      );
-
-      console.log('[Proxy] Verification result:', verification);
-
-      if (!verification.isValid) {
-        paymentStatus = 'failed';
-        paymentError = verification.invalidReason;
-
-        const errorResponse = create402Response(
-          verification.invalidReason,
-          x402PaymentRequirements,
-          verification.payer
-        );
-
-        return res.status(errorResponse.status).json(errorResponse.body);
+      // First, decode the payment header manually (it's just base64 JSON)
+      try {
+        decodedPayment = JSON.parse(Buffer.from(xPaymentHeader, 'base64').toString('utf-8'));
+      } catch (decodeError) {
+        console.error('[Proxy] Failed to decode payment header:', decodeError);
+        throw new Error('Invalid payment header format');
       }
 
-      paymentStatus = 'verified';
-      decodedPayment = verification.decodedPayment;
+      const userAddress = decodedPayment?.payload?.authorization?.from;
+      const paymentValue = decodedPayment?.payload?.authorization?.value || '0';
+      const paymentNetwork = (decodedPayment?.network || 'base') as any;
+      const paymentAmount = atomicAmountToDollars(paymentValue, paymentNetwork);
+
+      console.log('[Proxy] Decoded payment - User:', userAddress, 'Amount:', paymentAmount, 'Required:', price);
+      console.log('[Proxy] Endpoint credits enabled:', matchingEndpoint.creditsEnabled);
+
+      // Check if this endpoint supports credits and if it's a zero-value auth request
+      if (matchingEndpoint.creditsEnabled && paymentAmount === 0) {
+        console.log('[Proxy] Zero-value payment detected, checking credits...');
+
+        // Verify the zero-value auth signature with proper EIP-712 verification
+        const isValidSignature = await verifyZeroValueAuthSignature(decodedPayment);
+        if (!isValidSignature) {
+          paymentStatus = 'failed';
+          paymentError = 'Invalid authentication signature';
+
+          const errorResponse = create402Response(
+            'Invalid authentication signature',
+            []
+          );
+          return res.status(errorResponse.status).json(errorResponse.body);
+        }
+
+        // Check credit balance
+        creditBalance = await getCreditBalance(matchingEndpoint.id, userAddress);
+
+        if (!creditBalance || creditBalance.balance < price) {
+          paymentStatus = 'failed';
+          paymentError = `Insufficient credits. Balance: ${creditBalance?.balance || 0}, Required: ${price}`;
+
+          const x402Requirements = allowedNetworks.map(network =>
+            createX402PaymentRequirements(
+              `$${price}`,
+              network,
+              `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}`,
+              `Payment for ${project[0].name} - ${matchingEndpoint?.description || requestPath}`
+            )
+          );
+
+          const errorResponse = create402Response(
+            paymentError,
+            x402Requirements
+          );
+          return res.status(errorResponse.status).json(errorResponse.body);
+        }
+
+        // Deduct credits
+        const updatedBalance = await deductCredits(matchingEndpoint.id, userAddress, price);
+        if (!updatedBalance) {
+          paymentStatus = 'failed';
+          paymentError = 'Failed to deduct credits';
+          return res.status(500).json({ error: 'Credit deduction failed' });
+        }
+
+        creditBalance = updatedBalance;
+        usedCredits = true;
+        paymentStatus = 'verified_credits';
+        console.log(`[Proxy] Credits deducted. New balance: ${creditBalance.balance}`);
+
+      } else {
+        // Normal payment flow
+        x402PaymentRequirements = allowedNetworks.map(network =>
+          createX402PaymentRequirements(
+            `$${price}`,
+            network,
+            `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}`,
+            `Payment for ${project[0].name} - ${matchingEndpoint?.description || requestPath}`
+          )
+        );
+
+        console.log('[Proxy] Verifying payment with facilitator...');
+        const verification = await verifyX402Payment(
+          xPaymentHeader,
+          x402PaymentRequirements
+        );
+
+        console.log('[Proxy] Verification result:', verification);
+
+        if (!verification.isValid) {
+          paymentStatus = 'failed';
+          paymentError = verification.invalidReason;
+
+          const errorResponse = create402Response(
+            verification.invalidReason,
+            x402PaymentRequirements,
+            verification.payer
+          );
+
+          return res.status(errorResponse.status).json(errorResponse.body);
+        }
+
+        paymentStatus = 'verified';
+        decodedPayment = verification.decodedPayment;
+
+        // Handle overpayment for credit-enabled endpoints
+        if (matchingEndpoint.creditsEnabled && new BigNumber(paymentAmount).isGreaterThan(price)) {
+          const overpayment = calculateOverpayment(paymentAmount, price);
+          console.log(`[Proxy] Overpayment detected: ${overpayment}, adding to credits...`);
+
+          creditBalance = await addCredits(
+            project[0].id,
+            matchingEndpoint.id,
+            userAddress,
+            overpayment
+          );
+          console.log(`[Proxy] Credits added. New balance: ${creditBalance.balance}`);
+        }
+      }
     } catch (conversionError) {
       console.error('[Proxy] Payment conversion error:', conversionError);
       paymentStatus = 'failed';
@@ -171,7 +268,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const enableSettlement = process.env.ENABLE_SETTLEMENT === 'true';
 
-    if (enableSettlement && process.env.EVM_PRIVATE_KEY) {
+    // Skip settlement if credits were used (no actual payment to settle)
+    if (usedCredits) {
+      settlementStatus = 'skipped_credits';
+      console.log('[Proxy] Settlement skipped - credits used instead of payment');
+    } else if (enableSettlement && process.env.EVM_PRIVATE_KEY) {
       try {
         console.log('[Proxy] Starting settlement phase');
 
@@ -217,7 +318,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       clientIp: req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown',
       userAgent: req.headers['user-agent'] || 'unknown',
       paymentStatus: paymentStatus,
-      paymentAmount: decodedPayment?.payload?.authorization?.value ? parseFloat(decodedPayment.payload.authorization.value) / 100 : 0,
+      paymentAmount: atomicAmountToDollars(decodedPayment?.payload?.authorization?.value || '0', (decodedPayment.network || 'base') as any),
       transactionHash: null,
       settlementStatus: settlementStatus,
       settlementTxHash: settlementTxHash,
@@ -254,6 +355,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         transactionHash: settlementTxHash,
         settlementTime: new Date().toISOString()
       });
+    }
+
+    // Add credit balance headers
+    if (creditBalance) {
+      settlementHeaders['X-Credit-Balance'] = creditBalance.balance.toString();
+      settlementHeaders['X-Credit-Total-Deposited'] = creditBalance.totalDeposited.toString();
+      settlementHeaders['X-Credit-Total-Spent'] = creditBalance.totalSpent.toString();
+      settlementHeaders['X-Credit-Used'] = usedCredits.toString();
     }
 
     settlementHeaders['X-Proxy-Project'] = project[0].name;
