@@ -591,6 +591,103 @@ async function runComprehensiveE2ETests() {
   }
 
   // ═══════════════════════════════════════════════════════
+  // TEST SUITE 6: Headers, Body, and Params
+  // ═══════════════════════════════════════════════════════
+  console.log('\n═══════════════════════════════════════════════════════');
+  console.log('TEST SUITE 6: Headers, Body, and Params');
+  console.log('═══════════════════════════════════════════════════════\n');
+
+  console.log('Creating project with configured headers, body, and params...');
+  const configProject = {
+    name: 'Config Test Project',
+    description: 'Test headers, body, and params configuration',
+    defaultPrice: 0.01,
+    currency: 'USD',
+    payTo: process.env.ADDRESS || '0xC237b055dd2f9e9B7fDBC531cca9fF44dF6727cf',
+    paymentChains: ['base'],
+    endpoints: [
+      {
+        url: 'https://httpbin.org',
+        path: '/anything',
+        method: 'POST',
+        price: 0.01,
+        headers: {
+          'X-Custom-Header': 'test-value',
+          'X-API-Key': 'secret-key-123'
+        },
+        body: {
+          defaultField: 'default-value',
+          timestamp: 'server-time'
+        },
+        params: {
+          source: 'xpay2',
+          version: '1.0'
+        },
+        description: 'Endpoint with headers, body, and params'
+      }
+    ]
+  };
+
+  const configResp = await fetch('http://localhost:3000/api/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(configProject)
+  });
+
+  const configData = await configResp.json();
+  console.log(`✅ Project: ${configData.project.slug}\n`);
+
+  const configEndpoint = configData.project.endpoints[0];
+  const configUrl = `http://localhost:3000/api/proxy/${configData.project.slug}${configEndpoint.path}`;
+
+  console.log('Test 6.1: Configured headers are merged with request');
+  try {
+    const fetchWithPayment = wrapFetchWithPayment(fetch, signer);
+    const resp = await fetchWithPayment(configUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Custom-Request': 'from-client'
+      },
+      body: JSON.stringify({
+        userField: 'user-value'
+      })
+    });
+
+    const respData = await resp.json();
+
+    const hasDefaultHeaders = respData.headers['X-Custom-Header'] === 'test-value' &&
+                               respData.headers['X-Api-Key'] === 'secret-key-123';
+    const hasRequestHeader = respData.headers['X-Custom-Request'] === 'from-client';
+    const hasDefaultBody = respData.json?.defaultField === 'default-value';
+    const hasUserBody = respData.json?.userField === 'user-value';
+    const hasParams = respData.args?.source === 'xpay2' && respData.args?.version === '1.0';
+
+    logTest(
+      'Headers merged correctly',
+      hasDefaultHeaders && hasRequestHeader,
+      `Default headers: ${hasDefaultHeaders}, Request header: ${hasRequestHeader}`
+    );
+
+    logTest(
+      'Body merged correctly',
+      hasDefaultBody && hasUserBody,
+      `Default body: ${hasDefaultBody}, User body: ${hasUserBody}`
+    );
+
+    logTest(
+      'Params appended correctly',
+      hasParams,
+      `Params found: source=${respData.args?.source}, version=${respData.args?.version}`
+    );
+
+  } catch (error) {
+    logTest('Headers merged correctly', false, error.message);
+    logTest('Body merged correctly', false, error.message);
+    logTest('Params appended correctly', false, error.message);
+  }
+
+  // ═══════════════════════════════════════════════════════
   // TEST RESULTS SUMMARY
   // ═══════════════════════════════════════════════════════
   console.log('\n═══════════════════════════════════════════════════════');

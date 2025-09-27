@@ -329,12 +329,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const requestBody = extractRequestBody(req);
 
+    const endpointHeaders = matchingEndpoint.headers ? JSON.parse(matchingEndpoint.headers) : {};
+    const mergedHeaders = { ...endpointHeaders, ...req.headers };
+
+    const endpointBody = matchingEndpoint.body ? JSON.parse(matchingEndpoint.body) : {};
+    const mergedBody = typeof requestBody === 'object' && requestBody !== null
+      ? { ...endpointBody, ...requestBody }
+      : requestBody || endpointBody;
+
+    let finalPath = matchingEndpoint.path;
+    if (matchingEndpoint.params) {
+      const endpointParams = JSON.parse(matchingEndpoint.params);
+      const queryParams = new URLSearchParams(endpointParams);
+      finalPath += (matchingEndpoint.path.includes('?') ? '&' : '?') + queryParams.toString();
+    }
+
     const forwardResponse = await forwardRequest({
       originalUrl: backendUrl,
-      requestPath: matchingEndpoint.path,
-      method: req.method,
-      headers: req.headers,
-      body: requestBody,
+      requestPath: finalPath,
+      method: req.method || 'GET',
+      headers: mergedHeaders,
+      body: mergedBody,
       timeout: 30000
     });
 
@@ -347,7 +362,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const processingTime = Date.now() - startTime;
 
-    const settlementHeaders = {};
+    const settlementHeaders: Record<string, string> = {};
 
     if (settlementTxHash) {
       settlementHeaders['X-Payment-Response'] = JSON.stringify({
@@ -386,7 +401,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .where(eq(apiLogs.id, logEntry[0].id))
       .catch(err => console.error('[Proxy] Failed to update log:', err));
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Proxy handler error:', error);
     res.status(500).json({
       error: 'Internal server error',
