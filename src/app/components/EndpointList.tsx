@@ -39,7 +39,9 @@ export function EndpointList({
     <div className={`space-y-4 ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        <h2 className="text-lg font-semibold text-foreground font-display">
+          {title}
+        </h2>
         <div className="text-sm text-muted-foreground">
           {endpoints.length} endpoint{endpoints.length !== 1 ? "s" : ""}
         </div>
@@ -62,7 +64,7 @@ export function EndpointList({
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {endpoints
             .sort(
               (a, b) =>

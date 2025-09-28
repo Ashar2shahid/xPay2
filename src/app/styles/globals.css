@@ -1,5 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Tektur:wdth,wght@75..100,400..900&display=swap")
-layer(base);
+@import url("https://fonts.googleapis.com/css2?family=Bitcount+Prop+Single+Ink:wght,ELSH,ELXP@100..900,44.8,0..100&family=Tektur:wdth,wght@75..100,400..900&display=swap");
 
 /* P reset */
 @import "./reset.css" layer(base);
@@ -9,20 +8,11 @@ layer(base);
 
 @import "./theme.css" layer(theme);
 
-@import "./typography.css" layer(utilities);
-
 @import "tailwindcss";
 
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark, [data-mode="dark"], .dark *, [data-mode="dark"] *));
-
-@font-face {
-  font-family: "Tektur";
-  src: url("https://fonts.googleapis.com/css2?family=Tektur:wdth,wght@75..100,400..900&display=swap");
-  font-weight: 1 999;
-  font-display: swap;
-}
 
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
@@ -33,6 +23,10 @@ layer(base);
   color utility to any element that depends on these defaults.
 */
 
+* * {
+  border-radius: 0px !important;
+}
+
 @layer base {
   *,
   ::after,
@@ -40,7 +34,9 @@ layer(base);
   ::backdrop,
   ::file-selector-button {
     border-color: var(--color-border, currentColor);
-    @apply border-border outline-ring/50;
+    /* @apply border-border outline-ring/50; */
+
+    border-radius: 0px !important;
   }
 
   /* // */
@@ -49,12 +45,10 @@ layer(base);
     display: grid;
     grid-auto-rows: auto 1fr auto; /* main fills up available space + push the footer down */
     min-height: 100vh; /* be at least a full viewport height */
-
-    font-family: monospace !important;
   }
 
   body {
-    background-color: var(--color-paper);
+    background-color: var(--base-700) !important;
     color: var(--color-ink);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -105,19 +99,9 @@ layer(base);
     filter: brightness(1.2);
   }
 
-  .tabs-list {
-    @apply flex items-center p-1 relative;
-
-    /* &::before {
-        content: '';
-        position: absolute;
-        height: 2px;
-        bottom: 0;
-        left: var(--tab-left, 0);
-        width: var(--tab-width, 30px);
-        background: var(--color-primary);
-        transition: left var(--transition-normal), width var(--transition-normal);
-      }*/
+  .border {
+    border: none !important;
+    box-shadow: inset 0 0 0 1px var(--base-500, currentColor) !important;
   }
 }
 
@@ -155,6 +139,17 @@ layer(base);
 
   .hide-scrollbar::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Opera */
+  }
+
+  /* Font display utility class */
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  /* Custom shadow for large window components */
+  .shadow-window-large {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25),
+      0 0 0 1px rgba(0, 0, 0, 0.05), 0 10px 25px -5px rgba(0, 0, 0, 0.1);
   }
 }
 

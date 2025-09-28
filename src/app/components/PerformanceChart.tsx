@@ -45,7 +45,9 @@ export function PerformanceChart({
   return (
     <Card className={`p-6 ${className}`}>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        <h2 className="text-lg font-semibold text-foreground font-display">
+          {title}
+        </h2>
         <div className="flex gap-2">
           {timeRanges.map((range) => (
             <Badge

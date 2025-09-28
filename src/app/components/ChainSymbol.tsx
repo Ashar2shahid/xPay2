@@ -25,7 +25,7 @@ const mapNamesToIds: Record<string, number> = {
 
 export function ChainSymbol({
   symbol,
-  size = "sm",
+  size = "lg",
   className,
   alt,
 }: ChainSymbolProps) {
@@ -40,7 +40,7 @@ export function ChainSymbol({
       alt={alt || symbol}
       width={24}
       height={24}
-      className={cn("shrink-0 object-contain", sizeClasses[size], className)}
+      className={cn("shrink-0 object-contain", sizeClasses["lg"], className)}
       onError={(e: any) => {
         // Hide image if logo doesn't exist
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment

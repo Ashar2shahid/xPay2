@@ -44,7 +44,7 @@ export default function Home() {
                 <div className="h-9 w-9 rounded-md bg-gradient-primary flex items-center justify-center shadow-sm">
                   <Zap className="h-5 w-5 text-primary-foreground" />
                 </div>
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground font-display">
                   Endpoint Dashboard
                 </h1>
               </div>
@@ -65,7 +65,7 @@ export default function Home() {
         {/* Loading skeleton */}
         <div className="space-y-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl md:text-2xl font-semibold text-foreground">
+            <h2 className="text-xl md:text-2xl font-semibold text-foreground font-display">
               Loading Projects...
             </h2>
           </div>
@@ -91,7 +91,7 @@ export default function Home() {
                 <div className="h-9 w-9 rounded-md bg-gradient-primary flex items-center justify-center shadow-sm">
                   <Zap className="h-5 w-5 text-primary-foreground" />
                 </div>
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground font-display">
                   Endpoint Dashboard
                 </h1>
               </div>
@@ -112,7 +112,7 @@ export default function Home() {
         {/* Loading skeleton */}
         <div className="space-y-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl md:text-2xl font-semibold text-foreground">
+            <h2 className="text-xl md:text-2xl font-semibold text-foreground font-display">
               Loading Projects...
             </h2>
           </div>
@@ -138,7 +138,7 @@ export default function Home() {
                 <div className="h-9 w-9 rounded-md bg-gradient-primary flex items-center justify-center shadow-sm">
                   <Zap className="h-5 w-5 text-primary-foreground" />
                 </div>
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground font-display">
                   Endpoint Dashboard
                 </h1>
               </div>
@@ -179,7 +179,7 @@ export default function Home() {
               <div className="h-9 w-9 rounded-md bg-gradient-primary flex items-center justify-center shadow-sm">
                 <Zap className="h-5 w-5 text-primary-foreground" />
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground font-display">
                 Endpoint Dashboard
               </h1>
             </div>
@@ -212,7 +212,7 @@ export default function Home() {
       ) : (
         <div className="space-y-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl md:text-2xl font-semibold text-foreground">
+            <h2 className="text-xl md:text-2xl font-semibold text-foreground font-display">
               Your Projects
             </h2>
             <div className="text-sm text-muted-foreground">
@@ -220,7 +220,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-8">
             {projects
               .sort(
                 (a, b) =>

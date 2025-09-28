@@ -15,6 +15,7 @@ import {
   ErrorMessage,
   NotFoundErrorMessage,
 } from "@/app/components";
+import { X, Maximize2 } from "lucide-react";
 
 export default function ProjectDetail() {
   const { id } = useParams() as { id: string };
@@ -145,44 +146,70 @@ export default function ProjectDetail() {
   };
 
   return (
-    <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 space-y-10">
-      {/* Project Header */}
-      <div className="border-b border-border pb-6 md:pb-8">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-              {project.name}
-            </h1>
+    <div className="border-5 border-base-600 min-h-screen">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+        {/* Window Container */}
+        <div className="rounded-xl overflow-hidden shadow-lg border border-base-500">
+          {/* Window Bar Header */}
+          <div className="flex items-center justify-between p-2 bg-muted border-b border-base-500 fixed top-0 left-0 right-0">
+            {/* Left: Chain Icons */}
             <div className="flex items-center gap-1">
               {project.paymentChains.map((chainId, index) => (
                 <ChainSymbol key={index} symbol={chainId} />
               ))}
             </div>
+
+            {/* Center: Description */}
+            <div className="flex-1 text-center">
+              <p className="text-sm text-muted-foreground truncate px-2">
+                {project.description || "No description provided"}
+              </p>
+            </div>
+
+            {/* Right: Control Buttons */}
+            <div className="flex items-center gap-1">
+              <button className="w-5 h-5 rounded-sm hover:bg-muted flex items-center justify-center transition-colors border border-base-500">
+                <Maximize2 className="h-3 w-3 text-muted-foreground" />
+              </button>
+              <button
+                onClick={() => router.push("/")}
+                className="w-5 h-5 rounded-sm hover:bg-muted flex items-center justify-center transition-colors border border-base-500"
+              >
+                <X className="h-3 w-3 text-muted-foreground" />
+              </button>
+            </div>
           </div>
-          <p className="text-sm md:text-base text-muted-foreground">
-            {project.description || "No description provided"}
-          </p>
+
+          {/* Window Content */}
+          <div className="p-6 space-y-8 bg-background">
+            {/* Project Title */}
+            <div className="text-center  pb-4">
+              <h1 className="text-4xl md:text-3xl font-bold text-foreground font-display">
+                {project.name}
+              </h1>
+            </div>
+
+            {/* Add Endpoint Section */}
+            <div className="max-w-2xl mx-auto">
+              <AddEndpoint projectId={id} onSuccess={handleEndpointAdded} />
+            </div>
+
+            {/* Endpoints List */}
+            <EndpointList
+              endpoints={endpoints}
+              title="Project Endpoints"
+              onEndpointClick={(endpoint) =>
+                router.push(`/project/${id}/endpoint/${endpoint.id}`)
+              }
+              onEndpointDelete={handleDeleteEndpoint}
+              emptyState={{
+                title: "No endpoints yet",
+                description: "Add your first endpoint using the form above",
+              }}
+            />
+          </div>
         </div>
-      </div>
-
-      {/* Add Endpoint Section */}
-      <div className="max-w-2xl mx-auto">
-        <AddEndpoint projectId={id} onSuccess={handleEndpointAdded} />
-      </div>
-
-      {/* Endpoints List */}
-      <EndpointList
-        endpoints={endpoints}
-        title="Project Endpoints"
-        onEndpointClick={(endpoint) =>
-          router.push(`/project/${id}/endpoint/${endpoint.id}`)
-        }
-        onEndpointDelete={handleDeleteEndpoint}
-        emptyState={{
-          title: "No endpoints yet",
-          description: "Add your first endpoint using the form above",
-        }}
-      />
-    </main>
+      </main>
+    </div>
   );
 }

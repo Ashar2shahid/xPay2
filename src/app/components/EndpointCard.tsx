@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { Card } from "@/app/components/ui/card";
-import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import {
   AlertDialog,
@@ -23,6 +22,8 @@ import {
   Trash2,
   Copy,
   Check,
+  Maximize2,
+  X,
 } from "lucide-react";
 
 export interface EndpointCardProps {
@@ -50,13 +51,7 @@ export function EndpointCard({
     return endpoint.isActive ? "default" : "secondary";
   };
 
-  const getStatusIcon = () => {
-    return endpoint.isActive ? (
-      <TrendingUp className="h-3 w-3" />
-    ) : (
-      <Clock className="h-3 w-3" />
-    );
-  };
+  const getStatusIcon = () => {};
 
   const handleCardClick = () => {
     if (onClick) {
@@ -101,96 +96,111 @@ export function EndpointCard({
 
   return (
     <Card
-      className={`p-6 cursor-pointer hover:bg-card-hover transition-colors group ${className}`}
+      className={`cursor-pointer transition-all hover:bg-card-hover shadow-lg group rounded-xl overflow-hidden grid ${className}`}
       onClick={handleCardClick}
     >
-      <div className="space-y-4">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1 flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-              {extractDomain(endpoint.url)}
-            </h3>
-            {endpoint.description && (
-              <p className="text-xs text-muted-foreground">
-                {endpoint.description}
-              </p>
-            )}
-          </div>
+      {/* Window Bar Header */}
+      <div className="flex items-center justify-between p-2 bg-muted/30 border border-base-500">
+        {/* Left: Title */}
+        <div className="flex-1">
+          <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors font-display truncate">
+            {extractDomain(endpoint.url)}
+          </h3>
+        </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {showActions && onDelete && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => e.stopPropagation()}
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+        {/* Right: Control Buttons */}
+        <div className="flex items-center gap-1">
+          <button className="w-5 h-5 rounded-sm hover:bg-muted flex items-center justify-center transition-colors border border-base-500">
+            <Maximize2 className="h-3 w-3 text-muted-foreground" />
+          </button>
+          {showActions && onDelete && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-5 h-5 rounded-sm hover:bg-muted flex items-center justify-center transition-colors border border-base-500"
+                >
+                  <Trash2 className="h-3 w-3 text-muted-foreground" />
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Endpoint</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this endpoint? This action
+                    cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Endpoint</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete this endpoint? This action
-                      cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
+      </div>
 
-            <Badge variant={getStatusColor()}>
-              <div className="flex items-center gap-1">
-                {getStatusIcon()}
-                {endpoint.isActive ? "Active" : "Inactive"}
-              </div>
-            </Badge>
+      {/* Address Bar */}
+      <div className="flex items-center justify-between p-2 bg-white border border-base-500 border-t-0">
+        <div className="flex-1 min-w-0">
+          <div
+            className="text-xs font-mono text-foreground truncate"
+            title={endpoint.proxyUrl}
+          >
+            {endpoint.proxyUrl}
           </div>
         </div>
+        <button
+          onClick={handleCopyProxyUrl}
+          className="w-5 h-5 rounded-sm hover:bg-muted flex items-center justify-center transition-colors border border-base-500 ml-2"
+          title={copied ? "Copied!" : "Copy proxy URL"}
+        >
+          {copied ? (
+            <Check className="h-3 w-3 text-muted-foreground" />
+          ) : (
+            <Copy className="h-3 w-3 text-muted-foreground" />
+          )}
+        </button>
+      </div>
 
-        <div className="border-t border-border pt-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <div className="text-xs text-muted-foreground mb-1">
-                Proxy URL
-              </div>
-              <div
-                className="text-xs font-mono text-foreground truncate"
-                title={endpoint.proxyUrl}
-              >
-                {truncateUrl(endpoint.proxyUrl)}
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCopyProxyUrl}
-              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground shrink-0"
-              title={copied ? "Copied!" : "Copy proxy URL"}
-            >
-              {copied ? (
-                <Check className="h-3 w-3" />
-              ) : (
-                <Copy className="h-3 w-3" />
-              )}
-            </Button>
-          </div>
+      {/* Large Active Badge - Main Content */}
+      <div
+        className={`flex items-center justify-center w-full h-full min-h-[100px] text-white ${
+          endpoint.isActive ? "bg-green-500" : "bg-gray-500"
+        }`}
+      >
+        <div className="flex items-center gap-2 text-5xl font-semibold relative">
+          {endpoint.isActive ? (
+            <TrendingUp className="absolute inset-0 left-1/2 top-1/2 -translate-y-1/2 -translate-1/2 opacity-70 text-base-800" />
+          ) : (
+            <Clock className="absolute inset-0 left-1/2 top-1/2 -translate-y-1/2 -translate-1/2 opacity-70 text-base-800" />
+          )}
+
+          <span className="text-primary-300 relative z-10">
+            {endpoint.isActive ? "Active" : "Inactive"}
+          </span>
         </div>
-        <div className="text-xs text-muted-foreground border-t border-border pt-3">
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between p-1 border border-base-500">
+        <div className="text-xs text-muted-foreground">
           Created: {new Date(endpoint.createdAt).toLocaleDateString()}
         </div>
+        {endpoint.description && (
+          <div
+            className="text-xs text-muted-foreground truncate max-w-[200px]"
+            title={endpoint.description}
+          >
+            {endpoint.description}
+          </div>
+        )}
       </div>
     </Card>
   );

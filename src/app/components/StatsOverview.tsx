@@ -22,7 +22,7 @@ export function StatsOverview({
     lg: 4,
   },
 }: StatsOverviewProps) {
-  const gridClasses = `grid gap-6 grid-cols-2 md:grid-cols-2`;
+  const gridClasses = `grid gap-6 grid-cols-3`;
 
   return (
     <div className={`${gridClasses} ${className}`}>

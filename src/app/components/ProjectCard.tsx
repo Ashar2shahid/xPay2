@@ -3,7 +3,14 @@
 import { Project } from "@/types";
 import { Card } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
-import { TrendingUp, TrendingDown, Clock, Zap } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  Zap,
+  Maximize2,
+  X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ChainSymbol } from "./ChainSymbol";
 interface ProjectCardProps {
@@ -31,34 +38,46 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <Card
-      className="p-6 md:p-7 cursor-pointer transition-colors transition-shadow hover:bg-card-hover hover:shadow-sm group rounded-xl"
+      className="cursor-pointer transition-all hover:bg-card-hover shadow-lg group rounded-xl overflow-hidden grid"
       onClick={() => router.push(`/project/${project.id}`)}
     >
-      <div className="space-y-4">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <h3 className="text-lg md:text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
-              {project.name}
-            </h3>
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {project.description || "No description provided"}
-            </p>
-          </div>
-          <div className="shrink-0 flex items-center gap-1">
-            {project.paymentChains.map((chainId, index) => (
-              <ChainSymbol key={index} symbol={chainId} />
-            ))}
-          </div>
+      {/* Window Bar Header */}
+      <div className="flex items-center justify-between p-2 bg-muted/30 border border-base-500">
+        {/* Left: Title */}
+        <div className="flex-1">
+          <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors font-display truncate">
+            {project.name}
+          </h3>
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-border">
-          <div className="text-xs text-muted-foreground">
-            {project.endpoints.length} endpoint
-            {project.endpoints.length !== 1 ? "s" : ""}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Updated {new Date(project.updatedAt).toLocaleDateString()}
-          </div>
+        {/* Right: Control Buttons */}
+        <div className="flex items-center gap-1">
+          <button className="w-5 h-5 rounded-sm hover:bg-muted flex items-center justify-center transition-colors border border-base-500">
+            <Maximize2 className="h-3 w-3 text-muted-foreground" />
+          </button>
+          <button className="w-5 h-5 rounded-sm hover:bg-muted flex items-center justify-center transition-colors border border-base-500">
+            <X className="h-3 w-3 text-muted-foreground" />
+          </button>
+        </div>
+      </div>
+
+      {/* Card Content */}
+
+      <div>
+        <p className="text-sm p-1 text-muted-foreground line-clamp-2">
+          {project.description || "No description provided"}
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between p-1 border border-base-500 ">
+        <div className="text-xs text-muted-foreground">
+          {project.endpoints.length} endpoint
+          {project.endpoints.length !== 1 ? "s" : ""}
+        </div>
+        <div className="flex items-center gap-1">
+          {project.paymentChains.map((chainId, index) => (
+            <ChainSymbol key={index} symbol={chainId} />
+          ))}
         </div>
       </div>
     </Card>

@@ -34,7 +34,7 @@ export function RecentActivity({
     <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${className}`}>
       {/* Recent Errors */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">
+        <h3 className="text-lg font-semibold text-foreground mb-4 font-display">
           Recent Errors
         </h3>
         <div className="space-y-3">
@@ -65,7 +65,7 @@ export function RecentActivity({
 
       {/* Configuration */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">
+        <h3 className="text-lg font-semibold text-foreground mb-4 font-display">
           Endpoint Configuration
         </h3>
         <div className="space-y-4">

@@ -6,6 +6,7 @@ import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import { Card } from "@/app/components/ui/card";
 import { useStore } from "@/store";
+import { cn } from "@/lib/utils";
 import {
   ExternalLink,
   Clock,
@@ -15,6 +16,8 @@ import {
   Activity,
   Copy,
   Check,
+  X,
+  Maximize2,
 } from "lucide-react";
 
 import {
@@ -56,7 +59,9 @@ function EndpointConfiguration({ endpoint }: { endpoint: any }) {
   if (!hasAnyConfig) {
     return (
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-2">Configuration</h3>
+        <h3 className="text-lg font-semibold mb-2 font-display">
+          Configuration
+        </h3>
         <p className="text-muted-foreground text-sm">
           No headers, parameters, or body configuration set for this endpoint.
         </p>
@@ -64,10 +69,20 @@ function EndpointConfiguration({ endpoint }: { endpoint: any }) {
     );
   }
 
+  // Count how many sections exist to determine grid columns
+  const existingSections = [headers, params, body].filter(Boolean).length;
+
   return (
     <Card className="p-6">
-      <h3 className="text-lg font-semibold mb-4">Configuration</h3>
-      <div className="space-y-4">
+      <h3 className="text-lg font-semibold mb-4 font-display">Configuration</h3>
+      <div
+        className={cn(
+          "grid gap-4",
+          existingSections === 1 && "grid-cols-1",
+          existingSections === 2 && "grid-cols-2",
+          existingSections === 3 && "grid-cols-3"
+        )}
+      >
         {headers && (
           <div>
             <h4 className="text-sm font-medium text-muted-foreground mb-2">
@@ -120,6 +135,16 @@ export default function EndpointDetail() {
 
   const project = hasMounted ? getProject(id) : null;
   const endpoint = project ? getEndpoint(project.id, endpointId) : null;
+
+  const extractDomain = (url: string) => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname;
+    } catch (error) {
+      // Fallback for invalid URLs - return the original string
+      return url;
+    }
+  };
 
   useEffect(() => {
     setHasMounted(true);
@@ -239,14 +264,6 @@ export default function EndpointDetail() {
   // Mock data for components with actual endpoint data where available
   const metricsData = [
     {
-      title: "Endpoint URL",
-      value: endpoint.url,
-      icon: Zap,
-      iconColor: "text-primary",
-      iconBgColor: "bg-primary/10",
-      subtitle: `${endpoint.method} request`,
-    },
-    {
       title: "Price",
       value: endpoint.price ? `$${endpoint.price}` : "Free",
       icon: Clock,
@@ -283,101 +300,188 @@ export default function EndpointDetail() {
   const configData = generateMockConfig();
 
   return (
-    <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 space-y-10">
-      {/* Endpoint Header */}
-      <div className="border-b border-border pb-6 md:pb-8">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-              {endpoint.url}
-            </h1>
-            <Badge variant={endpoint.isActive ? "default" : "secondary"}>
-              <div className="flex items-center gap-1">
-                <div
-                  className={`h-2 w-2 rounded-full mr-1 ${
-                    endpoint.isActive ? "bg-green-500" : "bg-gray-500"
-                  }`}
-                />
-                {endpoint.isActive ? "Active" : "Inactive"}
-              </div>
-            </Badge>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>{project.name}</span>
-            <span>•</span>
+    <div className="border-5 border-base-600/50 min-h-screen">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+        {/* Outer Window Container (Project Level) */}
+        <div className="rounded-xl overflow-hidden shadow-lg border border-base-500">
+          {/* Project Window Bar Header */}
+          <div className="flex items-center justify-between p-2 bg-muted border-b border-base-500 fixed top-0 left-0 right-0">
+            {/* Left: Chain Icons */}
             <div className="flex items-center gap-1">
               {project.paymentChains.map((chainId, index) => (
                 <ChainSymbol key={index} symbol={chainId} />
               ))}
             </div>
-            <span>•</span>
-            <a
-              href={endpoint.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
-            >
-              {endpoint.method} {endpoint.path}
-              <ExternalLink className="h-3 w-3" />
-            </a>
+
+            {/* Center: Project Description */}
+            <div className="flex-1 text-center">
+              <p className="text-sm text-muted-foreground truncate px-2">
+                {project.name || "No name provided"}
+              </p>
+            </div>
+
+            {/* Right: Control Buttons */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => router.push("/")}
+                className="w-5 h-5 rounded-sm hover:bg-muted flex items-center justify-center transition-colors border border-base-500"
+              >
+                <X className="h-3 w-3 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+
+          {/* Inner Window Container (Endpoint Level) - Smaller, Stacked */}
+          <div className="bg-background border-3 border-base-600 min-h-screen shadow-xl">
+            <div className="">
+              {/* Endpoint Window Bar Header */}
+              <div className="flex items-center justify-between p-2 bg-muted/30 border-b border-base-500">
+                {/* Left: Chain Icons */}
+                <div className="flex items-center gap-1">
+                  {project.paymentChains.map((chainId, index) => (
+                    <ChainSymbol key={index} symbol={chainId} />
+                  ))}
+                </div>
+
+                {/* Center: Endpoint URL */}
+                <div className="flex-1 text-center">
+                  <p className="text-sm font-semibold text-foreground truncate px-2">
+                    {endpoint.url}
+                  </p>
+                </div>
+
+                {/* Right: Control Buttons */}
+                <div className="flex items-center gap-1">
+                  <button className="w-5 h-5 rounded-sm hover:bg-muted flex items-center justify-center transition-colors border border-base-500">
+                    <Maximize2 className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={() => router.push(`/project/${id}`)}
+                    className="w-5 h-5 rounded-sm hover:bg-muted flex items-center justify-center transition-colors border border-base-500"
+                  >
+                    <X className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Address Bar */}
+              <div className="flex items-center justify-between p-2 bg-white border-b border-base-500">
+                <div className="flex-1 min-w-0">
+                  <div
+                    className="text-xs font-mono text-foreground truncate"
+                    title={endpoint.proxyUrl}
+                  >
+                    {endpoint.proxyUrl}
+                  </div>
+                </div>
+                <button
+                  onClick={handleCopyProxyUrl}
+                  className="w-5 h-5 rounded-sm hover:bg-muted flex items-center justify-center transition-colors border border-base-500 ml-2"
+                  title={copied ? "Copied!" : "Copy proxy URL"}
+                >
+                  {copied ? (
+                    <Check className="h-3 w-3 text-muted-foreground" />
+                  ) : (
+                    <Copy className="h-3 w-3 text-muted-foreground" />
+                  )}
+                </button>
+              </div>
+
+              {/* Window Content */}
+              <div className="p-6 space-y-8 bg-background">
+                {/* Endpoint Title */}
+                <div className="text-center border-b border-border pb-4">
+                  <h1 className="text-2xl md:text-3xl font-bold text-foreground font-display">
+                    {extractDomain(endpoint.url)}
+                  </h1>
+                  <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground mt-2">
+                    <span>{project.name}</span>
+                    <a
+                      href={endpoint.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                    >
+                      {endpoint.method} {endpoint.path}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Key Metrics */}
+                <StatsOverview metrics={metricsData} />
+
+                {/* Endpoint Configuration */}
+                <EndpointConfiguration endpoint={endpoint} />
+
+                {/* Recent Errors Only */}
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4 font-display">
+                    Recent Errors
+                  </h3>
+                  <div className="space-y-3">
+                    {recentErrors.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No recent errors
+                      </div>
+                    ) : (
+                      recentErrors.map((error, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-destructive/5 border border-destructive/10"
+                        >
+                          <div>
+                            <div className="font-medium text-foreground">
+                              {error.error}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {error.time}
+                            </div>
+                          </div>
+                          <Badge variant="destructive">{error.status}</Badge>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Footer with Active Badge and Configuration */}
+              <div className="flex items-center justify-between p-2 border-t border-base-500 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Badge variant={endpoint.isActive ? "default" : "secondary"}>
+                    <div className="flex items-center gap-1">
+                      <div
+                        className={`h-2 w-2 rounded-full mr-1 ${
+                          endpoint.isActive ? "bg-green-500" : "bg-gray-500"
+                        }`}
+                      />
+                      {endpoint.isActive ? "Active" : "Inactive"}
+                    </div>
+                  </Badge>
+                  <div className="text-xs text-muted-foreground">
+                    Created: {new Date(endpoint.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+
+                {/* Configuration Data */}
+                <div className="flex items-center gap-4 text-xs">
+                  {configData.map((config, index) => (
+                    <div key={index} className="flex items-center gap-1">
+                      <span className="text-muted-foreground">
+                        {config.label}:
+                      </span>
+                      <span className="font-mono text-foreground">
+                        {config.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Proxy URL Section */}
-
-        <Card className="p-4 bg-muted/50">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Proxy URL
-              </h3>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopyProxyUrl}
-                className="h-8 gap-2"
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Copy
-                  </>
-                )}
-              </Button>
-            </div>
-            <div className="p-3 bg-background rounded-md border">
-              <code className="text-sm font-mono text-foreground break-all">
-                {endpoint.proxyUrl}
-              </code>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Use this URL to make requests through the xPay proxy
-            </p>
-          </div>
-        </Card>
-      </div>
-
-      {/* Key Metrics */}
-      <StatsOverview metrics={metricsData} />
-
-      {/* Endpoint Configuration */}
-      <EndpointConfiguration endpoint={endpoint} />
-
-      {/* Performance Chart */}
-      <PerformanceChart data={hourlyData} />
-
-      {/* Recent Activity */}
-      <RecentActivity
-        recentErrors={recentErrors}
-        configuration={configData}
-        createdAt={new Date(endpoint.createdAt)}
-        lastRequest={new Date()} // Using current date as fallback since lastRequest doesn't exist in new schema
-      />
-    </main>
+      </main>
+    </div>
   );
 }

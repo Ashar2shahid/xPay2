@@ -16,7 +16,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={` antialiased`}>
         <div className="min-h-screen bg-background">
-          <DynamicHeader />
+          {/* <DynamicHeader /> */}
           {children}
         </div>
       </body>
