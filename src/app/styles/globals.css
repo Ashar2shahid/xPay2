@@ -163,6 +163,26 @@
     font-family: var(--font-display) !important;
   }
 
+  /* Bitcount Font Variable Animation */
+  @keyframes bitcount-elxp {
+    0% {
+      font-variation-settings: "ELXP" 0;
+    }
+    50% {
+      font-variation-settings: "ELXP" 100;
+    }
+    100% {
+      font-variation-settings: "ELXP" 0;
+    }
+  }
+
+  /* Animation utility class */
+  .font-display {
+    font-family: "Bitcount Prop Single Ink", monospace !important;
+    animation: bitcount-elxp 10s infinite ease-in-out;
+    will-change: font-variation-settings;
+  }
+
   /* Custom shadow for large window components */
   .shadow-window-large {
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25),
