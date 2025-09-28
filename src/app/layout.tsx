@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./styles/globals.css";
 import { DynamicHeader } from "./components/DynamicHeader";
+import { PageTransition } from "./components/PageTransition";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -17,7 +18,9 @@ export default function RootLayout({
       <body className={` antialiased`}>
         <div className="min-h-screen bg-background">
           {/* <DynamicHeader /> */}
-          {children}
+          <PageTransition>
+            {children}
+          </PageTransition>
         </div>
       </body>
     </html>
