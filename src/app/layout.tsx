@@ -18,9 +18,7 @@ export default function RootLayout({
       <body className={` antialiased`}>
         <div className="min-h-screen bg-background">
           {/* <DynamicHeader /> */}
-          <PageTransition>
-            {children}
-          </PageTransition>
+          <PageTransition>{children}</PageTransition>
         </div>
       </body>
     </html>

@@ -171,7 +171,7 @@
   /* Font families */
   --font-display: "Bitcount Prop Single Ink", monospace;
   --font-body: "Tektur", monospace;
-  --font-mono: monospace;
+  --font-mono: "Tektur", monospace;
 
   --font-primary: var(--font-body);
   --font-secondary: var(--font-display);
