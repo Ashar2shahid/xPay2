@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import {
@@ -25,6 +25,12 @@ import {
   Maximize2,
   X,
 } from "lucide-react";
+import { gsap } from "gsap";
+import { useGSAP } from "@gsap/react";
+import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
+
+// Register GSAP plugins
+gsap.registerPlugin(useGSAP, DrawSVGPlugin);
 
 export interface EndpointCardProps {
   endpoint: Endpoint;
@@ -46,6 +52,42 @@ export function EndpointCard({
   const avgLatency = 0;
   const successRate = 0;
   const [copied, setCopied] = useState(false);
+
+  // Refs for GSAP animations
+  const container = useRef<HTMLDivElement>(null);
+  const clockIconRef = useRef<SVGSVGElement>(null);
+  const trendingIconRef = useRef<SVGSVGElement>(null);
+
+  // GSAP Animation
+  useGSAP(
+    () => {
+      const tl = gsap.timeline({ repeat: -1 });
+
+      // Animate Clock icon paths
+      if (clockIconRef.current) {
+        const clockPaths =
+          clockIconRef.current.querySelectorAll("path, circle");
+        tl.fromTo(
+          clockPaths,
+          { drawSVG: "0%" },
+          { drawSVG: "100%", duration: 2, stagger: 0.3, ease: "power2.inOut" }
+        );
+      }
+
+      // Animate TrendingUp icon paths
+      if (trendingIconRef.current) {
+        const trendingPaths =
+          trendingIconRef.current.querySelectorAll("path, polyline");
+        tl.fromTo(
+          trendingPaths,
+          { drawSVG: "0%" },
+          { drawSVG: "100%", duration: 2, stagger: 0.3, ease: "power2.inOut" },
+          "-=1.5"
+        );
+      }
+    },
+    { scope: container }
+  );
 
   const getStatusColor = () => {
     return endpoint.isActive ? "default" : "secondary";
@@ -171,15 +213,40 @@ export function EndpointCard({
 
       {/* Large Active Badge - Main Content */}
       <div
+        ref={container}
         className={`flex items-center justify-center w-full h-full min-h-[100px] text-white ${
           endpoint.isActive ? "bg-green-500" : "bg-gray-500"
         }`}
       >
         <div className="flex items-center gap-2 text-5xl font-semibold relative">
           {endpoint.isActive ? (
-            <TrendingUp className="absolute inset-0 left-1/2 top-1/2 -translate-y-1/2 -translate-1/2 opacity-70 text-base-800" />
+            <svg
+              ref={trendingIconRef}
+              className="absolute inset-0 left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2 opacity-70 text-base-800 "
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="22,7 13.5,15.5 8.5,10.5 2,17" />
+              <polyline points="16,7 22,7 22,13" />
+            </svg>
           ) : (
-            <Clock className="absolute inset-0 left-1/2 top-1/2 -translate-y-1/2 -translate-1/2 opacity-70 text-base-800" />
+            <svg
+              ref={clockIconRef}
+              className="absolute inset-0 left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2 opacity-70 text-base-800 "
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12,6 12,12 16,14" />
+            </svg>
           )}
 
           <span className="text-primary-300 relative z-10">
