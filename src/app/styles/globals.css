@@ -1,0 +1,202 @@
+/* Local Font Declarations */
+@font-face {
+  font-family: "Tektur";
+  src: url("/Tektur-VariableFont_wdth,wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-stretch: 75% 100%;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bitcount Prop Single Ink";
+  src: url("/BitcountPropSingleInk-VariableFont_CRSV,ELSH,ELXP,SZP1,SZP2,XPN1,XPN2,YPN1,YPN2,slnt,wght.ttf")
+    format("truetype");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* P reset */
+@import "./reset.css" layer(base);
+
+/* S etup */
+@import "./setup.css" layer(base);
+
+@import "./theme.css" layer(theme);
+
+@import "tailwindcss";
+
+@import "tw-animate-css";
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+
+* {
+  border-radius: 0px !important;
+  font-family: "Tektur", monospace !important;
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border, currentColor);
+    /* @apply border-border outline-ring/50; */
+
+    border-radius: 0px !important;
+  }
+
+  /* // */
+
+  body #root {
+    display: grid;
+    grid-auto-rows: auto 1fr auto; /* main fills up available space + push the footer down */
+    min-height: 100vh; /* be at least a full viewport height */
+    font-family: "Tektur", monospace !important;
+  }
+
+  body {
+    background-color: var(--base-700) !important;
+    color: var(--color-ink);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  #root {
+    position: relative;
+  }
+}
+
+/* then other contextual styles */
+
+@layer components {
+  /*  */
+
+  /* scrollbar */
+  * {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: var(--line-width, 4px); /* Firefox */
+  }
+  /* This part is for the scrollbar track / */
+  *::-webkit-scrollbar {
+    width: var(--line-width, 4px);
+    height: var(--line-width, 4px);
+  }
+
+  /* / This part is for the track (the part that the thumb slides across) / */
+  ::-webkit-scrollbar-track {
+    box-shadow: var(--shadow-xs);
+    border-radius: var(--radius-lg);
+  }
+
+  /* / This part is for the thumb (the part you drag) / */
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+      to bottom,
+      var(--color-primary),
+      var(--color-secondary)
+    );
+    border-radius: var(--radius-lg);
+  }
+
+  /* / This part is for the thumb when it's being hovered over  */
+  ::-webkit-scrollbar-thumb:hover {
+    filter: brightness(1.2);
+  }
+
+  /* -shadow: 0 10px 15px -3px var(--tw-shadow-color, rgba(0, 0, 0, .1)), 0 4px 6px -4px var(--tw-shadow-color, rgba(0, 0, 0, .1));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow); */
+  .border {
+    border: none !important;
+    box-shadow: inset 0 0 0 1px var(--base-500, currentColor) !important;
+  }
+}
+
+@layer utilities {
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.7s both;
+  }
+  .animate-fade-in-slow {
+    animation: fadeIn 1.5s both;
+  }
+  @keyframes bounceSlow {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+  .animate-bounce-slow {
+    animation: bounceSlow 2s infinite;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
+  /* Font display utility class */
+  .font-display {
+    font-family: var(--font-display) !important;
+  }
+
+  /* Bitcount Font Variable Animation */
+  @keyframes bitcount-elxp {
+    0% {
+      font-variation-settings: "ELXP" 0;
+    }
+    50% {
+      font-variation-settings: "ELXP" 100;
+    }
+    100% {
+      font-variation-settings: "ELXP" 0;
+    }
+  }
+
+  /* Animation utility class */
+  .font-display {
+    font-family: "Bitcount Prop Single Ink", monospace !important;
+    animation: bitcount-elxp 10s infinite ease-in-out;
+    will-change: font-variation-settings;
+  }
+
+  /* Custom shadow for large window components */
+  .shadow-window-large {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25),
+      0 0 0 1px rgba(0, 0, 0, 0.05), 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.halftone {
+  background-color: var(--color-base-900);
+  background-image: radial-gradient(
+    circle at center,
+    var(--color-base-700) 10%,
+    transparent 0
+  );
+  background-size: 1rem 1rem;
+  background-repeat: round;
+}
