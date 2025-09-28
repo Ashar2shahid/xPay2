@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "rm -f database.sqlite && npm run init-db && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
