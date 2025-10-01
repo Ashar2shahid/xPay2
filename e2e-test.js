@@ -591,10 +591,94 @@ async function runComprehensiveE2ETests() {
   }
 
   // ═══════════════════════════════════════════════════════
-  // TEST SUITE 6: Headers, Body, and Params
+  // TEST SUITE 6: ENS Resolution
   // ═══════════════════════════════════════════════════════
   console.log('\n═══════════════════════════════════════════════════════');
-  console.log('TEST SUITE 6: Headers, Body, and Params');
+  console.log('TEST SUITE 6: ENS Resolution');
+  console.log('═══════════════════════════════════════════════════════\n');
+
+  console.log('Creating project with ENS name for payTo...');
+  const ensProject = {
+    name: 'ENS Payment Test',
+    description: 'Test ENS name resolution for payments',
+    defaultPrice: 0.01,
+    currency: 'USD',
+    payTo: 'vitalik.eth',
+    paymentChains: ['base'],
+    endpoints: [
+      {
+        url: 'https://jsonplaceholder.typicode.com',
+        path: '/todos/1',
+        method: 'GET',
+        price: 0.01,
+        description: 'ENS-enabled endpoint'
+      }
+    ]
+  };
+
+  const ensResponse = await fetch('http://localhost:3000/api/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(ensProject)
+  });
+
+  const ensResult = await ensResponse.json();
+
+  logTest(
+    'Project creation with ENS name',
+    ensResponse.ok,
+    ensResponse.ok ? `Project: ${ensResult.project.slug}` : `Error: ${ensResult.error || 'Unknown'}`
+  );
+
+  if (ensResponse.ok) {
+    const ensSlug = ensResult.project.slug;
+    console.log(`✅ Project created: ${ensSlug}\n`);
+
+    console.log('Test 6.1: Payment requirements generated with ENS');
+    try {
+      const noPaymentResp = await fetch(`http://localhost:3000/api/proxy/${ensSlug}/todos/1`);
+
+      logTest(
+        'Returns 402 with ENS-resolved payTo',
+        noPaymentResp.status === 402,
+        `Status: ${noPaymentResp.status}`
+      );
+
+      if (noPaymentResp.status === 402) {
+        const body = await noPaymentResp.json();
+        const hasPaymentRequirements = body.accepts && body.accepts.length > 0;
+        const payToResolved = body.accepts?.[0]?.payTo?.startsWith('0x');
+
+        logTest(
+          'Payment requirements include resolved address',
+          hasPaymentRequirements && payToResolved,
+          `PayTo: ${body.accepts?.[0]?.payTo || 'N/A'}`
+        );
+      }
+    } catch (error) {
+      logTest('Returns 402 with ENS-resolved payTo', false, error.message);
+    }
+
+    console.log('\nTest 6.2: Payment with ENS-resolved address');
+    try {
+      const url = `http://localhost:3000/api/proxy/${ensSlug}/todos/1`;
+      const resp = await x402fetch(url, { method: 'GET' });
+
+      logTest(
+        'Payment successful with ENS',
+        resp.status === 200,
+        `Status: ${resp.status}`
+      );
+    } catch (error) {
+      logTest('Payment successful with ENS', false, error.message);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // TEST SUITE 7: Headers, Body, and Params
+  // ═══════════════════════════════════════════════════════
+  console.log('\n═══════════════════════════════════════════════════════');
+  console.log('TEST SUITE 7: Headers, Body, and Params');
   console.log('═══════════════════════════════════════════════════════\n');
 
   console.log('Creating project with configured headers, body, and params...');
@@ -640,7 +724,7 @@ async function runComprehensiveE2ETests() {
   const configEndpoint = configData.project.endpoints[0];
   const configUrl = `http://localhost:3000/api/proxy/${configData.project.slug}${configEndpoint.path}`;
 
-  console.log('Test 6.1: Configured headers are merged with request');
+  console.log('Test 7.1: Configured headers are merged with request');
   try {
     const fetchWithPayment = wrapFetchWithPayment(fetch, signer);
     const resp = await fetchWithPayment(configUrl, {

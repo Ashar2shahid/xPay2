@@ -87,8 +87,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'payTo address is required' });
       }
 
-      if (!payTo.match(/^0x[a-fA-F0-9]{40}$/)) {
-        return res.status(400).json({ error: 'payTo must be a valid Ethereum address' });
+      if (!payTo.match(/^0x[a-fA-F0-9]{40}$/) && !payTo.includes('.eth')) {
+        return res.status(400).json({ error: 'payTo must be a valid Ethereum address or ENS name' });
       }
 
       if (!Array.isArray(paymentChains) || paymentChains.length === 0) {

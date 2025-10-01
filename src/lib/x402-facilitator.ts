@@ -10,26 +10,63 @@ import {
 } from "x402/types";
 import { useFacilitator } from "x402/verify";
 import { processPriceToAtomicAmount, findMatchingPaymentRequirements, getDefaultAsset } from "x402/shared";
+import { normalize } from 'viem/ens';
+import { createPublicClient, http } from 'viem';
+import { mainnet } from 'viem/chains';
 
 // Environment configuration
 const facilitatorUrl = process.env.FACILITATOR_URL as Resource || 'https://facilitator.coinbase.com' as Resource;
-const payTo = process.env.ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000000' as `0x${string}`;
 
 // Initialize facilitator
 // eslint-disable-next-line react-hooks/rules-of-hooks
 const { verify, settle } = useFacilitator({ url: facilitatorUrl });
 const x402Version = 1;
 
+// ENS resolution client
+const ensClient = createPublicClient({
+  chain: mainnet,
+  transport: http()
+});
+
+/**
+ * Resolves an ENS name to an Ethereum address
+ * Returns the input if it's already an address
+ */
+async function resolveEnsName(nameOrAddress: string): Promise<`0x${string}`> {
+  // If it's already an address (starts with 0x and has 42 chars), return it
+  if (nameOrAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+    return nameOrAddress as `0x${string}`;
+  }
+
+  // If it looks like an ENS name (contains .eth), resolve it
+  if (nameOrAddress.includes('.eth')) {
+    const address = await ensClient.getEnsAddress({
+      name: normalize(nameOrAddress)
+    });
+
+    if (!address) {
+      throw new Error(`Could not resolve ENS name: ${nameOrAddress}`);
+    }
+
+    return address;
+  }
+
+  // If it's neither, throw an error
+  throw new Error(`Invalid address or ENS name: ${nameOrAddress}`);
+}
+
 /**
  * Creates payment requirements for a given price and network
  * Based on the reference implementation
  */
-function createExactPaymentRequirements(
+async function createExactPaymentRequirements(
   price: Price,
   network: Network,
   resource: Resource,
+  payToAddressOrEns: string,
   description = "",
-): PaymentRequirements {
+): Promise<PaymentRequirements> {
+  const payToAddress = await resolveEnsName(payToAddressOrEns);
   const atomicAmountForAsset = processPriceToAtomicAmount(price, network);
   if ("error" in atomicAmountForAsset) {
     throw new Error(atomicAmountForAsset.error);
@@ -43,7 +80,7 @@ function createExactPaymentRequirements(
     resource,
     description,
     mimeType: "",
-    payTo: payTo,
+    payTo: payToAddress,
     maxTimeoutSeconds: 60,
     asset: asset.address,
     outputSchema: undefined,
@@ -141,14 +178,16 @@ export async function settleX402Payment(
 
 /**
  * Helper to create PaymentRequirements for our SaaS use case
+ * Accepts either an Ethereum address or ENS name for payTo
  */
-export function createX402PaymentRequirements(
+export async function createX402PaymentRequirements(
   price: Price,
   network: Network,
   resource: Resource,
+  payToAddressOrEns: string,
   description?: string
-): PaymentRequirements {
-  return createExactPaymentRequirements(price, network, resource, description);
+): Promise<PaymentRequirements> {
+  return createExactPaymentRequirements(price, network, resource, payToAddressOrEns, description);
 }
 
 /**

@@ -107,14 +107,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!xPaymentHeader) {
       console.log('[Proxy] No X-Payment header found, returning 402');
 
-      const x402Requirements = allowedNetworks.map(network =>
+      const x402Requirements = await Promise.all(allowedNetworks.map(network =>
         createX402PaymentRequirements(
           `$${price}`,
-          network,
+          network as any,
           `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}`,
+          project[0].payTo,
           `Payment for ${project[0].name} - ${matchingEndpoint?.description || requestPath}`
         )
-      );
+      ));
 
       const response = create402Response(
         'Payment Required',
@@ -171,14 +172,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           paymentStatus = 'failed';
           paymentError = `Insufficient credits. Balance: ${creditBalance?.balance || 0}, Required: ${price}`;
 
-          const x402Requirements = allowedNetworks.map(network =>
+          const x402Requirements = await Promise.all(allowedNetworks.map(network =>
             createX402PaymentRequirements(
               `$${price}`,
-              network,
+              network as any,
               `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}`,
+              project[0].payTo,
               `Payment for ${project[0].name} - ${matchingEndpoint?.description || requestPath}`
             )
-          );
+          ));
 
           const errorResponse = create402Response(
             paymentError,
@@ -202,14 +204,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       } else {
         // Normal payment flow
-        x402PaymentRequirements = allowedNetworks.map(network =>
+        x402PaymentRequirements = await Promise.all(allowedNetworks.map(network =>
           createX402PaymentRequirements(
             `$${price}`,
-            network,
+            network as any,
             `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/${projectSlug}`,
+            project[0].payTo,
             `Payment for ${project[0].name} - ${matchingEndpoint?.description || requestPath}`
           )
-        );
+        ));
 
         console.log('[Proxy] Verifying payment with facilitator...');
         const verification = await verifyX402Payment(
