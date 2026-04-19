@@ -296,4 +296,4 @@ MIT
 
 ---
 
-Built with ❤️ for ETHIndia 2024
+Built with ❤️ for ETHIndia 2025
